@@ -1,59 +1,125 @@
 <script>
-	import Counter from './Counter.svelte';
-	import welcome from '$lib/images/svelte-welcome.webp';
-	import welcome_fallback from '$lib/images/svelte-welcome.png';
+	import { page } from "$app/stores";
+	import { print24HourTime } from '$lib/utils'
+
+	const nextSundayDate = new Date($page.data.date)
+
+	const fullCourtBookings = $page.data.reserved.ReserveradeTider.filter((item) => item.ResursIndex === 0)
+	const halfCourtABookings = $page.data.reserved.ReserveradeTider.filter((item) => item.ResursIndex === 1)
+	const halfCourtBBookings = $page.data.reserved.ReserveradeTider.filter((item) => item.ResursIndex === 2)
 </script>
 
 <svelte:head>
-	<title>Home</title>
-	<meta name="description" content="Svelte demo app" />
+	<title>E Planen Ledig På Söndag - Söndagsboll ⚽️</title>
 </svelte:head>
 
-<section>
-	<h1>
-		<span class="welcome">
-			<picture>
-				<source srcset={welcome} type="image/webp" />
-				<img src={welcome_fallback} alt="Welcome" />
-			</picture>
-		</span>
+<main>
+	<h1>Söndagsboll ⚽️ </h1>
+	<h2>{nextSundayDate.toLocaleDateString('sv-SE', {
+		day: 'numeric',
+		month: 'short'
+	})}</h2>
 
-		to your new<br />SvelteKit app
-	</h1>
+	<section class="header">
+		<div />
+		<div>Fullplan</div>
+		<div>Ena halvan</div>
+		<div>Andra halvan</div>
+	</section>
 
-	<h2>
-		try editing <strong>src/routes/+page.svelte</strong>
-	</h2>
+	<section class="grid">
+		<div class="time-axis">
+			<div>9.00</div>
+			<div>10.00</div>
+			<div>11.00</div>
+			<div>12.00</div>
+			<div>13.00</div>
+			<div>14.00</div>
+			<div>15.00</div>
+			<div>16.00</div>
+			<div>17.00</div>
+		</div>
 
-	<Counter />
-</section>
+		{#each fullCourtBookings as item}
+			{@const startRow = (item.StartMinut / 15) - 35}
+			{@const endRow = (item.SlutMinut / 15) - 35}
+
+			<div
+				class="booking"
+				style:grid-column="2"
+				style:grid-row={`${startRow} / ${endRow}`}
+			>{print24HourTime(item.StartMinut)} - {print24HourTime(item.SlutMinut)}</div>
+		{/each}
+
+		{#each halfCourtABookings as item}
+			{@const startRow = (item.StartMinut / 15) - 35}
+			{@const endRow = (item.SlutMinut / 15) - 35}
+
+			<div
+				class="booking"
+				style:grid-column="3"
+				style:grid-row={`${startRow} / ${endRow}`}
+			>{print24HourTime(item.StartMinut)} - {print24HourTime(item.SlutMinut)}</div>
+		{/each}
+
+		{#each halfCourtBBookings as item}
+			{@const startRow = (item.StartMinut / 15) - 35}
+			{@const endRow = (item.SlutMinut / 15) - 35}
+
+			<div
+				class="booking"
+				style:grid-column="4"
+				style:grid-row={`${startRow} / ${endRow}`}
+			>{print24HourTime(item.StartMinut)} - {print24HourTime(item.SlutMinut)}</div>
+		{/each}
+	</section>
+
+	<!-- <code>
+		<pre>{JSON.stringify($page.data.reserved, null, 2)}</pre>
+	</code>
+
+	<code>
+		<pre>{JSON.stringify($page.data.calendar, null, 2)}</pre>
+	</code> -->
+</main>
 
 <style>
-	section {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		flex: 0.6;
+	:root {
+		--background: #fff;
+		--text: #333;
+
+		--grid-columns: 4em 1fr 1fr 1fr;
 	}
 
-	h1 {
-		width: 100%;
+	:global(*, *::after, *::before) {
+		box-sizing: border-box;
 	}
 
-	.welcome {
-		display: block;
-		position: relative;
-		width: 100%;
-		height: 0;
-		padding: 0 0 calc(100% * 495 / 2048) 0;
+	:global(body) {
+		background-color: var(--background);
+		color: var(--text);
 	}
 
-	.welcome img {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		display: block;
+	.header {
+		display: grid;
+		grid-template-columns: var(--grid-columns);
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: var(--grid-columns);
+		grid-template-rows: repeat(36, 1em);
+	}
+	
+	.time-axis {
+		grid-column: 1;
+		grid-row: 1 / -1;
+
+		display: grid;
+		grid-template-rows: repeat(9, 1fr);
+	}
+
+	.booking {
+		background-color: antiquewhite;
 	}
 </style>
