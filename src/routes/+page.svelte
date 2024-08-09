@@ -1,12 +1,12 @@
 <script>
 	import { page } from "$app/stores";
-	import { print24HourTime } from '$lib/utils'
+	import { fullCourtId, halfCourtAId, halfCourtBId } from "$lib/ids";
+	import Bookings from "./Bookings.svelte";
 
 	const nextSundayDate = new Date($page.data.date)
 
-	const fullCourtBookings = $page.data.reserved.ReserveradeTider.filter((item) => item.ResursIndex === 0)
-	const halfCourtABookings = $page.data.reserved.ReserveradeTider.filter((item) => item.ResursIndex === 1)
-	const halfCourtBBookings = $page.data.reserved.ReserveradeTider.filter((item) => item.ResursIndex === 2)
+	/** @type {import('$lib/types').CalendarResponse} */
+	const calendar = $page.data.calendar;
 </script>
 
 <svelte:head>
@@ -15,72 +15,45 @@
 
 <main>
 	<h1>Söndagsboll ⚽️ </h1>
-	<h2>{nextSundayDate.toLocaleDateString('sv-SE', {
+	<h2>Nästa söndag: {nextSundayDate.toLocaleDateString('sv-SE', {
 		day: 'numeric',
 		month: 'short'
 	})}</h2>
 
 	<section class="header">
 		<div />
-		<div>Fullplan</div>
 		<div>Ena halvan</div>
 		<div>Andra halvan</div>
 	</section>
 
 	<section class="grid">
 		<div class="time-axis">
-			<div>9.00</div>
-			<div>10.00</div>
-			<div>11.00</div>
-			<div>12.00</div>
-			<div>13.00</div>
-			<div>14.00</div>
-			<div>15.00</div>
-			<div>16.00</div>
-			<div>17.00</div>
+			<div>9:00</div>
+			<div>10:00</div>
+			<div>11:00</div>
+			<div>12:00</div>
+			<div>13:00</div>
+			<div>14:00</div>
+			<div>15:00</div>
+			<div>16:00</div>
+			<div>17:00</div>
 		</div>
 
-		{#each fullCourtBookings as item}
-			{@const startRow = (item.StartMinut / 15) - 35}
-			{@const endRow = (item.SlutMinut / 15) - 35}
+		<Bookings
+			bookings={calendar.Data.filter((item) => item.Resurs === halfCourtAId)}
+			column="2"
+		/>
 
-			<div
-				class="booking"
-				style:grid-column="2"
-				style:grid-row={`${startRow} / ${endRow}`}
-			>{print24HourTime(item.StartMinut)} - {print24HourTime(item.SlutMinut)}</div>
-		{/each}
+		<Bookings
+			bookings={calendar.Data.filter((item) => item.Resurs === halfCourtBId)}
+			column="3"
+		/>
 
-		{#each halfCourtABookings as item}
-			{@const startRow = (item.StartMinut / 15) - 35}
-			{@const endRow = (item.SlutMinut / 15) - 35}
-
-			<div
-				class="booking"
-				style:grid-column="3"
-				style:grid-row={`${startRow} / ${endRow}`}
-			>{print24HourTime(item.StartMinut)} - {print24HourTime(item.SlutMinut)}</div>
-		{/each}
-
-		{#each halfCourtBBookings as item}
-			{@const startRow = (item.StartMinut / 15) - 35}
-			{@const endRow = (item.SlutMinut / 15) - 35}
-
-			<div
-				class="booking"
-				style:grid-column="4"
-				style:grid-row={`${startRow} / ${endRow}`}
-			>{print24HourTime(item.StartMinut)} - {print24HourTime(item.SlutMinut)}</div>
-		{/each}
+		<Bookings
+			bookings={calendar.Data.filter((item) => item.Resurs === fullCourtId)}
+			column="2 / 4"
+		/>
 	</section>
-
-	<!-- <code>
-		<pre>{JSON.stringify($page.data.reserved, null, 2)}</pre>
-	</code>
-
-	<code>
-		<pre>{JSON.stringify($page.data.calendar, null, 2)}</pre>
-	</code> -->
 </main>
 
 <style>
@@ -88,7 +61,22 @@
 		--background: #fff;
 		--text: #333;
 
-		--grid-columns: 4em 1fr 1fr 1fr;
+		--border-color: #333;
+
+		--grid-free: #b6ffb7;
+		--grid-booked: #ff7e7e;
+
+		--grid-columns: 3em 1fr 1fr;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root {
+			--background: #333;
+			--text: #fff;
+
+			--grid-free: #8bffa9;
+			--grid-booked: #ff8080;
+		}
 	}
 
 	:global(*, *::after, *::before) {
@@ -100,15 +88,22 @@
 		color: var(--text);
 	}
 
+	main {
+		margin-inline: auto;
+		max-width: 60em;
+	}
+
 	.header {
 		display: grid;
-		grid-template-columns: var(--grid-columns);
+		grid-template-columns: var(--grid-columns);		
 	}
 
 	.grid {
 		display: grid;
 		grid-template-columns: var(--grid-columns);
 		grid-template-rows: repeat(36, 1em);
+
+		background-color: var(--grid-free);
 	}
 	
 	.time-axis {
@@ -117,9 +112,9 @@
 
 		display: grid;
 		grid-template-rows: repeat(9, 1fr);
-	}
 
-	.booking {
-		background-color: antiquewhite;
+		background-color: var(--background);
+		text-align: right;
+		padding-inline-end: 0.5em;
 	}
 </style>
