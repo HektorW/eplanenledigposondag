@@ -2,11 +2,20 @@
 	import { page } from "$app/stores";
 	import { fullCourtId, halfCourtAId, halfCourtBId } from "$lib/ids";
 	import Bookings from "./Bookings.svelte";
+	import TimeAxisEntry from "./TimeAxisEntry.svelte";
 
 	const nextSundayDate = new Date($page.data.date)
 
 	/** @type {import('$lib/types').CalendarResponse} */
 	const calendar = $page.data.calendar;
+
+	/** @type {import('$lib/types').WeatherResponseData | null} */
+	const weather = $page.data.weather;
+
+	const sundayWeatherEntries = weather?.properties.timeseries
+		.map((entry) => ({ ...entry, date: new Date(entry.time) }))
+		.filter((entry) => entry.date.getDate() === nextSundayDate.getDate())
+		?? []
 </script>
 
 <svelte:head>
@@ -20,6 +29,10 @@
 		month: 'short'
 	})}</h2>
 
+	<!-- <code>
+		<pre>{JSON.stringify(sundayWeatherEntries, null, 2)}</pre>
+	</code> -->
+
 	<section class="header">
 		<div />
 		<div>Ena halvan</div>
@@ -28,15 +41,23 @@
 
 	<section class="grid">
 		<div class="time-axis">
-			<div>9:00</div>
-			<div>10:00</div>
+			<TimeAxisEntry hour={9} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={10} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={11} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={12} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={13} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={14} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={15} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={16} {sundayWeatherEntries} />
+			<TimeAxisEntry hour={17} {sundayWeatherEntries} />
+			<!-- <div>10:00</div>
 			<div>11:00</div>
 			<div>12:00</div>
 			<div>13:00</div>
 			<div>14:00</div>
 			<div>15:00</div>
 			<div>16:00</div>
-			<div>17:00</div>
+			<div>17:00</div> -->
 		</div>
 
 		<Bookings
@@ -66,7 +87,7 @@
 		--grid-free: #b6ffb7;
 		--grid-booked: #ff7e7e;
 
-		--grid-columns: 3em 1fr 1fr;
+		--grid-columns: 4em 1fr 1fr;
 	}
 
 	@media (prefers-color-scheme: dark) {
@@ -101,7 +122,7 @@
 	.grid {
 		display: grid;
 		grid-template-columns: var(--grid-columns);
-		grid-template-rows: repeat(36, 1em);
+		grid-template-rows: repeat(36, 1.25em);
 
 		background-color: var(--grid-free);
 	}

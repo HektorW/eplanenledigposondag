@@ -19,19 +19,19 @@ export type ReservedResponse
  * 
  * @example "/Date(1723374000000)/"
  */
-export type DateStr = string
+export type CalendarDateStr = string
 
 /** @example "#ffffff" */
 export type HexStr = string
 
 export type CalendarEntry
   = {
-    ActualEnd: DateStr
+    ActualEnd: CalendarDateStr
     Arendenr: unknown
     Bakgrundsfarg: HexStr
     BokadAv: string
     Description: string
-    End: DateStr
+    End: CalendarDateStr
     EndTimezone: unknown
     Eventbokning: boolean
     GrupperAsString: string
@@ -45,7 +45,7 @@ export type CalendarEntry
     RecurrenceRule: unknown
     /** Field id */
     Resurs: string
-    Start: DateStr
+    Start: CalendarDateStr
     StartTimezone: unknown
     /** Unknown meaning */
     Status: number
@@ -63,4 +63,53 @@ export type CalendarResponse
     Total: number
     AggregateResults: unknown
     Errors: unknown
+  }
+
+/** @example "2024-08-15T16:00:00Z" */
+export type WeatherDateStr = string
+
+export type WeatherEntryData
+  = {
+    summary?: {
+      symbol_code: string
+    }
+    details?: {
+      air_pressure_at_sea_level?: number
+      air_temperature?: number
+      cloud_area_fraction?: number
+      relative_humidity?: number
+      wind_from_direction?: number
+      wind_speed?: number
+      precipitation_amount?: number
+    }
+  }
+
+export type WeatherTimeEntry
+  = {
+    time: WeatherDateStr
+    data: {
+      instant: WeatherEntryData
+      next_12_hours: WeatherEntryData
+      next_6_hours: WeatherEntryData
+      next_1_hours?: WeatherEntryData
+    }
+  }
+
+export type ParsedWeatherTimeEntry
+  = {
+    date: Date
+    time: WeatherDateStr
+    data: {
+      instant: WeatherEntryData
+      next_12_hours: WeatherEntryData
+      next_6_hours: WeatherEntryData
+      next_1_hours?: WeatherEntryData
+    }
+  }
+
+export type WeatherResponseData
+  = {
+    properties: {
+      timeseries: WeatherTimeEntry[]
+    }
   }

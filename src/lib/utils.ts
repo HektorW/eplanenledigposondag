@@ -1,4 +1,4 @@
-import { DateStr } from "./types"
+import { CalendarDateStr } from "./types"
 
 export function print24HourTime(minutes: number): string {
   const decimal = minutes / 60
@@ -24,7 +24,7 @@ export function getNextSundayDate(fromDate = new Date()) {
   return nextSunday
 }
 
-export function dateStrToMinutes(dateStr: DateStr) {
+export function dateStrToMinutes(dateStr: CalendarDateStr) {
   const [timestampMs] = dateStr.match(/\d+/) ?? ['0']
   const date = new Date(Number(timestampMs))
 
