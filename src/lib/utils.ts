@@ -1,4 +1,4 @@
-import { CalendarDateStr } from "./types"
+import { type CalendarDateStr } from "./types"
 
 export function print24HourTime(minutes: number): string {
   const decimal = minutes / 60

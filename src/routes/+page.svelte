@@ -34,7 +34,7 @@
 	</code> -->
 
 	<section class="header">
-		<div />
+		<div></div>
 		<div>Ena halvan</div>
 		<div>Andra halvan</div>
 	</section>

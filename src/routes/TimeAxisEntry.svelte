@@ -1,9 +1,9 @@
-<script>
-  /** @type {number} */
-  export let hour
+<script lang="ts">
+	import type { ParsedWeatherTimeEntry } from "$lib/types";
+  
+  export let hour: number
 
-  /** @type {import('$lib/types').ParsedWeatherTimeEntry[]} */
-  export let sundayWeatherEntries
+  export let sundayWeatherEntries: ParsedWeatherTimeEntry[]
 
   const weatherEntry = sundayWeatherEntries
     .find((entry) => entry.date.getHours() === hour)
