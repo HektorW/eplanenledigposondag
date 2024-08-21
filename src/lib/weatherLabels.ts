@@ -1,0 +1,21 @@
+export const symbolCodeLabel: Record<string, string | undefined> = {
+	clearsky_day: 'sol',
+	cloudy: 'molnigt',
+	fair_day: 'sol och moln',
+	fog: 'dimma',
+	heavyrain: 'mycket regn',
+	heavyrainandthunder: 'mycket regn och åska',
+	heavyrainshowers_day: 'mycket regn och lite sol',
+	heavyrainshowersandthunder_day: 'mycket regn, åska och lite sol',
+	heavysnow: 'mycket snö',
+	lightrain: 'lite regn',
+	lightrainandthunder: 'lite regn och åska',
+	lightrainshowers_day: 'lite regn och sol',
+	lightrainshowersandthunder_day: 'lite regn, åska och sol',
+	lightsnow: 'lite snö',
+	partlycloudy_day: 'delvis molnigt',
+	rain: 'regn',
+	rainandthunder: 'regn och åska',
+	rainshowers_day: 'regn och sol',
+	snow: 'snö'
+};
