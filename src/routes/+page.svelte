@@ -17,9 +17,9 @@
 			.filter((entry) => entry.date.getDate() === nextSundayDate.getDate()) ?? [];
 
 	const middayWeather = sundayWeatherEntries.find((entry) => entry.date.getHours() === 14);
-	const middayWeatherSymbol = middayWeather?.data.next_12_hours.summary?.symbol_code ?? null;
+	const middayWeatherSymbol = middayWeather?.data.next_12_hours?.summary?.symbol_code ?? null;
 	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
-	const middayWeatherTemperature = middayWeather?.data.instant.details?.air_temperature ?? null;
+	const middayWeatherTemperature = middayWeather?.data.instant?.details?.air_temperature ?? null;
 </script>
 
 <svelte:head>

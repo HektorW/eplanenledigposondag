@@ -24,8 +24,9 @@
 			{#if weatherEntry}
 				{@const iconName =
 					weatherEntry.data.next_1_hours?.summary?.symbol_code ??
-					weatherEntry.data.next_6_hours.summary?.symbol_code}
-				{@const temperature = weatherEntry.data.instant.details?.air_temperature}
+					weatherEntry.data.next_6_hours?.summary?.symbol_code ??
+					null}
+				{@const temperature = weatherEntry.data.instant?.details?.air_temperature ?? null}
 
 				<div class="weather">
 					{#if iconName}
