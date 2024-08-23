@@ -81,6 +81,7 @@
 		margin-block: 0 2rem;
 
 		img {
+			height: 1em;
 			width: 1em;
 		}
 	}
