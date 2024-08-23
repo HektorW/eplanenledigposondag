@@ -16,8 +16,14 @@
 			.map((entry): ParsedWeatherTimeEntry => ({ ...entry, date: new Date(entry.time) }))
 			.filter((entry) => entry.date.getDate() === nextSundayDate.getDate()) ?? [];
 
-	const middayWeather = sundayWeatherEntries.find((entry) => entry.date.getHours() === 14);
-	const middayWeatherSymbol = middayWeather?.data.next_12_hours?.summary?.symbol_code ?? null;
+	const middayWeather = sundayWeatherEntries
+		.filter((entry) => entry.date.getHours() >= 11 && entry.date.getHours() <= 14)
+		.filter((entry) => entry.data.next_12_hours)
+		.toSorted((a, b) => a.date.getHours() - b.date.getHours())[0];
+
+	const middayWeatherSymbol =
+		(middayWeather?.data.next_12_hours ?? middayWeather.data.next_6_hours)?.summary?.symbol_code ??
+		null;
 	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
 	const middayWeatherTemperature = middayWeather?.data.instant?.details?.air_temperature ?? null;
 </script>
