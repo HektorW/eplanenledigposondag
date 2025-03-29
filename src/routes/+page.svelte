@@ -1,10 +1,9 @@
 <script lang="ts">
-	import type { PageData } from './$types';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import type { ParsedWeatherTimeEntry } from '$lib/types';
 	import { symbolCodeLabel } from '$lib/weatherLabels';
 
-	export let data: PageData;
+	export let data;
 
 	const nextSundayDate = new Date(data.date);
 
@@ -33,6 +32,8 @@
 	<title>E Planen Ledig På Söndag - Söndagsboll ⚽️</title>
 </svelte:head>
 
+<!-- <code><pre>{JSON.stringify(sundayWeatherEntries, null, 2)}</pre></code> -->
+
 <main>
 	<h1 class="title">Söndagsboll ⚽️</h1>
 	<p class="meta">
@@ -58,7 +59,11 @@
 		{/if}
 	</p>
 
-	<Calendar calendarEntries={calendar.Data} weatherEntries={sundayWeatherEntries} />
+	<h2>
+		{data.calendar.Data[0].Title}
+	</h2>
+
+	<!-- <Calendar calendarEntries={calendar.Data} weatherEntries={sundayWeatherEntries} /> -->
 </main>
 
 <style>

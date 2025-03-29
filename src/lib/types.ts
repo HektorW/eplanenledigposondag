@@ -76,6 +76,8 @@ export type WeatherEntryData = {
 		wind_from_direction?: number;
 		wind_speed?: number;
 		precipitation_amount?: number;
+		precipitation_amount_min?: number;
+		precipitation_amount_max?: number;
 	};
 };
 
