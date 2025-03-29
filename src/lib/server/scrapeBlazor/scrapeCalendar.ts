@@ -34,12 +34,12 @@ export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse
 		title = await page.title();
 		console.log('Page title:', title);
 
-		const elementOnLaunch = await getElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
+		const elementOnLaunch = await getElementWithText(page, 'a.rbok-menu-sub-item', 'Resurser');
 		console.log('Had menu items on launch:', elementOnLaunch !== null);
 
 		console.log('Waiting for menu items...');
 		try {
-			await waitForElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
+			await waitForElementWithText(page, 'a.rbok-menu-sub-item', 'Resurser');
 		} catch (error) {
 			console.log('waitForElementWithText timed out. Could not find menu items');
 			const menuItems = await page.$$('a.rbok-menu-sub-item');
@@ -56,7 +56,7 @@ export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse
 		console.log('Menu items found');
 
 		console.log('Waiting for the search input...');
-		const searchInput = await page.waitForSelector('#main input[placeholder="-- search --"]');
+		const searchInput = await page.waitForSelector('#main input[placeholder="-- sök --"]');
 		console.log('Search input found:', searchInput !== null);
 
 		// await searchInput.type('sorgenfri');
