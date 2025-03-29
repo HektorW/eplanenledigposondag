@@ -11,7 +11,7 @@ export async function waitFor<T>(
 	pollFunction: () => Promise<T | null>,
 	options: WaitForOptions = {}
 ) {
-	const { maxTime = 1000, pollInterval = 100 } = options;
+	const { maxTime = 2000, pollInterval = 100 } = options;
 
 	const startTime = Date.now();
 

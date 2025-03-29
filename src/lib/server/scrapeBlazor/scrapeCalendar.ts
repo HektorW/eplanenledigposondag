@@ -31,18 +31,34 @@ export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse
 		console.log('Navigating to URL:', baseUrl);
 		await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
 
+		title = await page.title();
+		console.log('Page title:', title);
+
 		const elementOnLaunch = await getElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
 		console.log('Had menu items on launch:', elementOnLaunch !== null);
 
 		console.log('Waiting for menu items...');
-		await waitForElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
+		try {
+			await waitForElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
+		} catch (error) {
+			console.log('waitForElementWithText timed out. Could not find menu items');
+			const menuItems = await page.$$('a.rbok-menu-sub-item');
+			const menuItemsText = await Promise.all(
+				menuItems.map(async (item) => {
+					const text = await item.evaluate((el) => el.textContent);
+					return text?.trim() ?? '';
+				})
+			);
+			console.log('Menu items:', menuItemsText);
+
+			throw error;
+		}
 		console.log('Menu items found');
 
 		console.log('Waiting for the search input...');
 		const searchInput = await page.waitForSelector('#main input[placeholder="-- search --"]');
 		console.log('Search input found:', searchInput !== null);
 
-		title = await page.title();
 		// await searchInput.type('sorgenfri');
 	} finally {
 		await disposeBrowser();
