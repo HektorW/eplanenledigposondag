@@ -25,3 +25,13 @@ export async function getElementWithText<Selector extends string>(
 ): Promise<ElementHandle<NodeFor<Selector>> | null> {
 	return (await getAllElementsWithText(page, selector, text))[0] ?? null;
 }
+
+export async function getElementsTexts(elements: ElementHandle<Element>[]): Promise<string[]> {
+	const texts = await Promise.all(
+		elements.map(async (element) => {
+			const text = await element.evaluate((el) => el.textContent);
+			return text ?? '';
+		})
+	);
+	return texts;
+}

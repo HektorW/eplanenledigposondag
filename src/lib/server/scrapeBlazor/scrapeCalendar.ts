@@ -4,6 +4,10 @@ import type { ElementHandle, Page } from 'puppeteer-core';
 import { disposeBrowser, getBrowser } from './getBrowser';
 import { waitForElementWithText } from './waitFor';
 import { getAllElementsWithText, getElementWithText } from './getElementWithText';
+import { waitUntilPageIsLoaded } from './step1WaitUntilPageIsLoaded';
+import { searchForSorgenfri } from './step2SearchForSorgenfri';
+import { selectDayView } from './step3SelectDayView';
+import { selectTargetDate } from './step4SelectTargetDate';
 
 const baseUrl = 'https://malmo.rbok.se/boka-resurser';
 
@@ -19,8 +23,8 @@ export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse
 	console.log('Target date:', targetDate.toISOString());
 
 	const browser = await getBrowser({
-		defaultViewport: { width: 1080, height: 1024 },
-		headless: true
+		defaultViewport: { width: 1200, height: 1024 },
+		headless: false
 	});
 
 	let title: string | null = null;
@@ -28,38 +32,39 @@ export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse
 	try {
 		const page = await browser.newPage();
 
+		// const client = await page.createCDPSession();
+		// await client.send('Network.enable');
+
+		// client.on('Network.webSocketCreated', ({ requestId, url }) => {
+		// 	console.log('Network.webSocketCreated', requestId, url);
+		// });
+
+		// client.on('Network.webSocketFrameReceived', ({ requestId, timestamp, response }) => {
+		// 	console.log('Network.webSocketFrameReceived', requestId, timestamp, response.payloadData);
+		// });
+
 		console.log('Navigating to URL:', baseUrl);
-		await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
+		await page.goto(`${baseUrl}`, { waitUntil: 'networkidle2' });
 
 		title = await page.title();
 		console.log('Page title:', title);
 
-		const elementOnLaunch = await getElementWithText(page, 'a.rbok-menu-sub-item', 'Resurser');
-		console.log('Had menu items on launch:', elementOnLaunch !== null);
+		// await new Promise((resolve) => {
+		// 	page.wait
+		// })
 
-		console.log('Waiting for menu items...');
-		try {
-			await waitForElementWithText(page, 'a.rbok-menu-sub-item', 'Resurser');
-		} catch (error) {
-			console.log('waitForElementWithText timed out. Could not find menu items');
-			const menuItems = await page.$$('a.rbok-menu-sub-item');
-			const menuItemsText = await Promise.all(
-				menuItems.map(async (item) => {
-					const text = await item.evaluate((el) => el.textContent);
-					return text?.trim() ?? '';
-				})
-			);
-			console.log('Menu items:', menuItemsText);
+		await waitUntilPageIsLoaded(page);
+		await searchForSorgenfri(page);
+		await selectDayView(page);
+		// await selectTargetDate(page, targetDate);
 
-			throw error;
-		}
-		console.log('Menu items found');
+		await new Promise((resolve) => setTimeout(resolve, 5000));
 
-		console.log('Waiting for the search input...');
-		const searchInput = await page.waitForSelector('#main input[placeholder="-- sök --"]');
-		console.log('Search input found:', searchInput !== null);
+		await page.screenshot({
+			path: `screenshot-${targetDate.toISOString().split('T')[0]}.png`
+		});
 
-		// await searchInput.type('sorgenfri');
+		console.log('Saved screenshot');
 	} finally {
 		await disposeBrowser();
 	}
@@ -140,71 +145,4 @@ export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse
 		AggregateResults: null,
 		Errors: null
 	};
-}
-
-async function waitForSorgenfriLabels(
-	page: Page,
-	firstCallTs = Date.now()
-): Promise<ElementHandle<HTMLLabelElement>[] | null> {
-	const maxWaitTime = 1000;
-	const currentTs = Date.now();
-	const elapsedTime = currentTs - firstCallTs;
-	if (elapsedTime > maxWaitTime) {
-		console.log('Max wait time exceeded');
-		return null;
-	}
-
-	console.log('Looking for Sorgenfri labels...');
-
-	const sorgenfriLabels = await getSorgenfriLabels(page);
-
-	const expectedLabelCount = 3;
-	if (sorgenfriLabels.length >= expectedLabelCount) {
-		console.log('Found all Sorgenfri labels');
-		return sorgenfriLabels;
-	}
-
-	console.log('Sorgenfri labels not found, waiting 100ms...');
-	await new Promise((resolve) => setTimeout(resolve, 100));
-
-	return await waitForSorgenfriLabels(page, firstCallTs);
-}
-
-async function getSorgenfriLabels(page: Page): Promise<ElementHandle<HTMLLabelElement>[]> {
-	return await getAllElementsWithText(page, '#Resurser label', 'Sorgenfri IP');
-}
-
-async function selectTargetDate(page: Page, targetDate: Date): Promise<void> {
-	const month = targetDate.getMonth() + 1;
-	const day = targetDate.getDate();
-
-	const prefix = (n: number) => (n < 10 ? '0' + n : n);
-	const targetDateStr = `Sun ${prefix(day)} ${prefix(month)}`;
-
-	const element = await page.waitForSelector('.k-link.k-nav-day');
-	if (!element) {
-		throw new Error('Could not find date element');
-	}
-
-	const elementText = await element.evaluate((el) => el.textContent);
-	if (!elementText) {
-		throw new Error('Could not get date element text');
-	}
-
-	if (!elementText.includes(targetDateStr)) {
-		console.log('Target date not found, selecting next day...');
-		await selectNextDay(page);
-		return selectTargetDate(page, targetDate);
-	}
-
-	console.log('Found target date:', elementText);
-}
-
-async function selectNextDay(page: Page): Promise<void> {
-	const nextBtn = await page.waitForSelector('.k-toolbar button[aria-label="Next"]');
-	if (!nextBtn) {
-		throw new Error('Could not find next button');
-	}
-
-	await nextBtn.click();
 }

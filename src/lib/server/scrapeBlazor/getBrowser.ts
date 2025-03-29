@@ -11,7 +11,7 @@ export async function getBrowser(options?: Pick<LaunchOptions, 'defaultViewport'
 	if (!sharedBrowser?.connected) {
 		console.log('Creating new browser instance', { isLocal });
 
-		const baseArgs = ['--locale=sv-SE', '--accept-lang=sv-SE'];
+		const baseArgs = ['--locale=en-US', '--accept-lang=en-US'];
 
 		sharedBrowser = await puppeteerCore.launch({
 			...options,
