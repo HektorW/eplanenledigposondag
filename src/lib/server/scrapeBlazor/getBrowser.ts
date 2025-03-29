@@ -9,6 +9,8 @@ let sharedBrowser: Browser | null = null;
 
 export async function getBrowser(options?: Pick<LaunchOptions, 'defaultViewport' | 'headless'>) {
 	if (!sharedBrowser?.connected) {
+		console.log('Creating new browser instance', { isLocal });
+
 		sharedBrowser = await puppeteerCore.launch({
 			...options,
 			...(isLocal
@@ -19,7 +21,7 @@ export async function getBrowser(options?: Pick<LaunchOptions, 'defaultViewport'
 				: {
 						headless: true,
 						args: chromium.args,
-						executablePath: await chromium.executablePath(),
+						executablePath: await chromium.executablePath(remoteExecutablePath),
 						ignoreHTTPSErrors: true
 					})
 		});
