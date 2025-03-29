@@ -1,6 +1,9 @@
 import { attempt, isFail } from '$lib/attempt';
 import type { CalendarResponse } from '$lib/types';
-import puppeteer, { ElementHandle, type NodeFor, type Page } from 'puppeteer';
+import type { ElementHandle, Page } from 'puppeteer-core';
+import { disposeBrowser, getBrowser } from './getBrowser';
+import { waitForElementWithText } from './waitFor';
+import { getAllElementsWithText, getElementWithText } from './getElementWithText';
 
 const baseUrl = 'https://malmo.rbok.se/boka-resurser';
 
@@ -12,95 +15,109 @@ const emptyResponse: CalendarResponse = {
 };
 
 export async function scrapeCalendar(targetDate: Date): Promise<CalendarResponse> {
-	console.log('Scraping calendar...');
+	console.log('Scraping blazor calendar...');
 	console.log('Target date:', targetDate.toISOString());
 
-	const browser = await puppeteer.launch({
-		headless: true,
-		defaultViewport: { width: 1080, height: 1024 }
+	const browser = await getBrowser({
+		defaultViewport: { width: 1080, height: 1024 },
+		headless: true
 	});
-	const page = await browser.newPage();
 
-	console.log('Navigating to URL:', baseUrl);
+	let title: string | null = null;
 
-	await page.goto(`${baseUrl}`);
+	try {
+		const page = await browser.newPage();
 
-	// console.log('Waiting for the calendar page to load...');
-	// await page.waitForSelector('[aria-label="Book"] [href="/boka-resurser"]');
+		console.log('Navigating to URL:', baseUrl);
+		await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
 
-	console.log('Waiting for the search input...');
-	const searchInput = await page.waitForSelector('#main input[placeholder="-- search --"]');
+		const elementOnLaunch = await getElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
+		console.log('Had menu items on launch:', elementOnLaunch !== null);
 
-	if (!searchInput) {
-		console.log('Could not find search input');
-		await browser.close();
-		return emptyResponse;
+		console.log('Waiting for menu items...');
+		await waitForElementWithText(page, 'a.rbok-menu-sub-item', 'Resources');
+		console.log('Menu items found');
+
+		console.log('Waiting for the search input...');
+		const searchInput = await page.waitForSelector('#main input[placeholder="-- search --"]');
+		console.log('Search input found:', searchInput !== null);
+
+		title = await page.title();
+		// await searchInput.type('sorgenfri');
+	} finally {
+		await disposeBrowser();
 	}
 
-	console.log('Found search input');
-	const searchInputPlaceholder = await searchInput.evaluate((el) => el.getAttribute('placeholder'));
-	console.log('Search input placeholder:', searchInputPlaceholder);
-
-	await searchInput.type('sorgenfri');
-	await searchInput.press('Enter');
-
-	const inputValue = await searchInput.evaluate((el) => el.value);
-	console.log('Typed value:', inputValue);
-
-	const sorgenfriLabels = await waitForSorgenfriLabels(page);
-
-	if (!sorgenfriLabels) {
-		console.log('Could not find Sorgenfri labels');
-		await browser.close();
-		return emptyResponse;
-	}
-
-	// console.log('Selecting Sorgenfri labels');
-	// for (const label of sorgenfriLabels) {
-	// 	const clickResult = await attempt(() => label.click());
-	// 	if (isFail(clickResult)) {
-	// 		console.log('Error clicking label:', clickResult.error);
-	// 		console.log('Label text:', await label.evaluate((el) => el.textContent));
-	// 		await browser.close();
-	// 		return emptyResponse;
-	// 	}
-	// }
-	// console.log('Sorgenfri labels selected');
-
-	// const dayBtn = await getElementWithText(page, '.k-toolbar .k-button-group button', 'Day');
-	// if (!dayBtn) {
-	// 	console.log('Could not find day button');
-	// 	await browser.close();
+	// if (!searchInput) {
+	// 	console.log('Could not find search input');
+	// 	await disposeBrowser();
 	// 	return emptyResponse;
 	// }
 
-	// dayBtn.click();
+	// console.log('Found search input');
+	// const searchInputPlaceholder = await searchInput.evaluate((el) => el.getAttribute('placeholder'));
+	// console.log('Search input placeholder:', searchInputPlaceholder);
 
-	// const selectDateResult = await attempt(() => selectTargetDate(page, targetDate));
-	// if (isFail(selectDateResult)) {
-	// 	console.log('Error selecting target date:', selectDateResult.error);
-	// 	await browser.close();
+	// await searchInput.type('sorgenfri');
+	// await searchInput.press('Enter');
+
+	// const inputValue = await searchInput.evaluate((el) => el.value);
+	// console.log('Typed value:', inputValue);
+
+	// const sorgenfriLabels = await waitForSorgenfriLabels(page);
+
+	// if (!sorgenfriLabels) {
+	// 	console.log('Could not find Sorgenfri labels');
+	// 	await disposeBrowser();
 	// 	return emptyResponse;
 	// }
 
-	// console.log('Target date selected');
+	// // console.log('Selecting Sorgenfri labels');
+	// // for (const label of sorgenfriLabels) {
+	// // 	const clickResult = await attempt(() => label.click());
+	// // 	if (isFail(clickResult)) {
+	// // 		console.log('Error clicking label:', clickResult.error);
+	// // 		console.log('Label text:', await label.evaluate((el) => el.textContent));
+	// // 		await disposeBrowser()
+	// // 		return emptyResponse;
+	// // 	}
+	// // }
+	// // console.log('Sorgenfri labels selected');
 
-	// await page.screenshot({
-	// 	path: `screenshot-${targetDate.toISOString().split('T')[0]}.png`
-	// });
+	// // const dayBtn = await getElementWithText(page, '.k-toolbar .k-button-group button', 'Day');
+	// // if (!dayBtn) {
+	// // 	console.log('Could not find day button');
+	// // 	await disposeBrowser()
+	// // 	return emptyResponse;
+	// // }
 
-	// console.log('Saved screenshot');
+	// // dayBtn.click();
 
-	const title = await page.title();
+	// // const selectDateResult = await attempt(() => selectTargetDate(page, targetDate));
+	// // if (isFail(selectDateResult)) {
+	// // 	console.log('Error selecting target date:', selectDateResult.error);
+	// // 	await disposeBrowser()
+	// // 	return emptyResponse;
+	// // }
 
-	await browser.close();
+	// // console.log('Target date selected');
 
-	console.log('Browser closed, returning calendar response');
+	// // await page.screenshot({
+	// // 	path: `screenshot-${targetDate.toISOString().split('T')[0]}.png`
+	// // });
+
+	// // console.log('Saved screenshot');
+
+	// const title = await page.title();
+
+	// await disposeBrowser();
+
+	// console.log('Browser closed, returning calendar response');
 
 	return {
 		Data: [
 			{
-				Title: title
+				Title: title ?? 'Unknown'
 			} as any
 		],
 		Total: 0,
@@ -139,32 +156,6 @@ async function waitForSorgenfriLabels(
 
 async function getSorgenfriLabels(page: Page): Promise<ElementHandle<HTMLLabelElement>[]> {
 	return await getAllElementsWithText(page, '#Resurser label', 'Sorgenfri IP');
-}
-
-async function getAllElementsWithText<Selector extends string>(
-	page: Page,
-	selector: Selector,
-	text: string
-): Promise<ElementHandle<NodeFor<Selector>>[]> {
-	const elements = await page.$$(selector);
-	const matchingElements = [];
-
-	for (const element of elements) {
-		const elementText = await element.evaluate((el) => el.textContent);
-		if (elementText?.includes(text)) {
-			matchingElements.push(element);
-		}
-	}
-
-	return matchingElements;
-}
-
-async function getElementWithText<Selector extends string>(
-	page: Page,
-	selector: Selector,
-	text: string
-): Promise<ElementHandle<NodeFor<Selector>> | null> {
-	return (await getAllElementsWithText(page, selector, text))[0] ?? null;
 }
 
 async function selectTargetDate(page: Page, targetDate: Date): Promise<void> {

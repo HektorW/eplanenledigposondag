@@ -60,7 +60,7 @@
 	</p>
 
 	<h2>
-		{data.calendar.Data[0].Title}
+		{data.calendar.Data[0]?.Title ?? 'Failed to scrape'}
 	</h2>
 
 	<!-- <Calendar calendarEntries={calendar.Data} weatherEntries={sundayWeatherEntries} /> -->

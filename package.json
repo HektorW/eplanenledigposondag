@@ -30,6 +30,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"puppeteer": "^24.4.0"
+		"@sparticuz/chromium-min": "^133.0.0",
+		"puppeteer-core": "^24.4.0"
 	}
 }
