@@ -1,5 +1,4 @@
 import type { Page } from 'puppeteer-core';
-import { getElementsTexts, getElementWithText } from './getElementWithText';
 import { assertNonNullish } from '$lib/assert';
 import { waitFor, waitForElementWithText } from './waitFor';
 

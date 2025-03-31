@@ -61,6 +61,21 @@ export type CalendarResponse = {
 	Errors: unknown;
 };
 
+export type NewCalendarResponse = {
+	bookings: Booking[];
+};
+
+export type Booking = {
+	bookingId: string;
+	resourceId: string;
+
+	startTimeFormatted: string;
+	endTimeFormatted: string;
+
+	bookedBy: string;
+	additionalInfo?: string | null;
+};
+
 /** @example "2024-08-15T16:00:00Z" */
 export type WeatherDateStr = string;
 

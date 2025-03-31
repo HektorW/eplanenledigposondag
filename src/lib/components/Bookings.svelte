@@ -1,27 +1,27 @@
 <script lang="ts">
 	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
-	import type { CalendarEntry } from '$lib/types';
-	import { dateStrToMinutes, print24HourTime } from '$lib/utils';
+	import type { Booking } from '$lib/types';
+	import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
 
 	type BookingsProps = {
-		calendarEntries: CalendarEntry[];
+		bookings: Booking[];
 	};
 
-	const { calendarEntries }: BookingsProps = $props();
+	const { bookings }: BookingsProps = $props();
 
-	const halfCourtAEntries = calendarEntries.filter((entry) => entry.Resurs === halfCourtAId);
-	const halfCourtBEntries = calendarEntries.filter((entry) => entry.Resurs === halfCourtBId);
-	const fullCourtEntries = calendarEntries.filter((entry) => entry.Resurs === fullCourtId);
+	const halfCourtAEntries = $derived(bookings.filter((entry) => entry.resourceId === halfCourtAId));
+	const halfCourtBEntries = $derived(bookings.filter((entry) => entry.resourceId === halfCourtBId));
+	const fullCourtEntries = $derived(bookings.filter((entry) => entry.resourceId === fullCourtId));
 
-	function getMinutes(entry: CalendarEntry) {
+	function getMinutes(entry: Booking) {
 		return {
-			start: dateStrToMinutes(entry.Start),
-			end: dateStrToMinutes(entry.End)
+			start: formattedTimeToMinutes(entry.startTimeFormatted),
+			end: formattedTimeToMinutes(entry.endTimeFormatted)
 		};
 	}
 </script>
 
-{#snippet renderBookingEntries(entries: CalendarEntry[], column: string)}
+{#snippet renderBookingEntries(entries: Booking[], column: string)}
 	{#each entries as entry}
 		{@const minutes = getMinutes(entry)}
 		{@const startRow = minutes.start / 15 - 34}
@@ -32,8 +32,8 @@
 			style:grid-column={column}
 			style:grid-row={`${startRow} / ${endRow}`}
 		>
-			{#if 'BokadAv' in entry}
-				<h3 class="booking-entry--name">{entry.BokadAv}</h3>
+			{#if 'bookedBy' in entry}
+				<h3 class="booking-entry--name">{entry.bookedBy}</h3>
 			{/if}
 
 			<div class="booking-entry--time">

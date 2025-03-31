@@ -1,4 +1,4 @@
-import puppeteerCore, { type Browser, type LaunchOptions } from 'puppeteer-core';
+import puppeteerCore, { Page, type Browser, type LaunchOptions } from 'puppeteer-core';
 import chromium from '@sparticuz/chromium-min';
 
 const remoteExecutablePath =
@@ -7,7 +7,9 @@ const remoteExecutablePath =
 const isLocal = process.env.NODE_ENV === 'development';
 let sharedBrowser: Browser | null = null;
 
-export async function getBrowser(options?: Pick<LaunchOptions, 'defaultViewport' | 'headless'>) {
+type BrowserOptions = Pick<LaunchOptions, 'defaultViewport' | 'headless'>;
+
+export async function getBrowser(options?: BrowserOptions) {
 	if (!sharedBrowser?.connected) {
 		console.log('Creating new browser instance', { isLocal });
 
@@ -45,5 +47,46 @@ export async function disposeBrowser() {
 
 	if (isLocal) {
 		await sharedBrowser.close();
+	}
+}
+
+type Callback<T, TInstance> = (callback: (instance: TInstance) => Promise<T>) => Promise<T>;
+
+export function withBrowser<T>(options?: BrowserOptions): Callback<T, Browser> {
+	return async (callback) => {
+		const browser = await getBrowser(options);
+
+		try {
+			return await callback(browser);
+		} finally {
+			await disposeBrowser();
+		}
+	};
+}
+
+export async function withPage<T>(
+	browser: Browser,
+	callback: (page: Page) => Promise<T>
+): Promise<T> {
+	const page = await browser.newPage();
+	try {
+		return await callback(page);
+	} finally {
+		await page.close();
+	}
+}
+
+export async function withBrowserAndPage<T>(
+	options: BrowserOptions,
+	callback: (browser: Browser, page: Page) => Promise<T>
+): Promise<T> {
+	const browser = await getBrowser(options);
+	const page = await browser.newPage();
+
+	try {
+		return await callback(browser, page);
+	} finally {
+		await page.close();
+		await disposeBrowser();
 	}
 }

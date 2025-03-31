@@ -13,7 +13,7 @@ export function getNextSundayDate(fromDate = new Date()) {
 	const nextSunday = new Date(fromDate);
 
 	const sundayDayIndex = 0;
-	const nextSundayAtHour = 19;
+	const nextSundayAtHour = 22;
 	if (fromDate.getDay() !== sundayDayIndex || fromDate.getHours() >= nextSundayAtHour) {
 		nextSunday.setDate(fromDate.getDate() + (7 - fromDate.getDay()));
 	}
@@ -26,4 +26,9 @@ export function dateStrToMinutes(dateStr: CalendarDateStr) {
 	const date = new Date(Number(timestampMs));
 
 	return date.getHours() * 60 + date.getMinutes();
+}
+
+export function formattedTimeToMinutes(time: string): number {
+	const [hours, minutes] = time.split(':').map(Number);
+	return hours * 60 + minutes;
 }

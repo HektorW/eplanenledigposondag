@@ -1,17 +1,22 @@
 <script lang="ts">
-	import type { CalendarEntry, ParsedWeatherTimeEntry } from '$lib/types';
+	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
 	import Bookings from './Bookings.svelte';
+	// import SuggestedTime from './SuggestedTime.svelte';
 	import TimeAxis from './TimeAxis.svelte';
 
 	type CalendarProps = {
-		calendarEntries: CalendarEntry[];
+		bookings: Booking[];
 		weatherEntries: ParsedWeatherTimeEntry[];
 	};
 
-	const { calendarEntries, weatherEntries }: CalendarProps = $props();
+	const { bookings, weatherEntries }: CalendarProps = $props();
+
+	function onGridClick(event: MouseEvent) {}
 </script>
 
-<section>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<section onclick={onGridClick}>
 	<header>
 		<h2>Ena halvan</h2>
 		<h2>Andra halvan</h2>
@@ -19,7 +24,9 @@
 
 	<TimeAxis {weatherEntries} />
 
-	<Bookings {calendarEntries} />
+	<Bookings {bookings} />
+
+	<!-- <SuggestedTime /> -->
 </section>
 
 <style lang="scss">
@@ -27,7 +34,7 @@
 		--columns: 4.5rem 1fr 1fr;
 
 		--row--height: 1.1rem;
-		--row--count: 36; // 9 hours * 4 quarters
+		--row--count: 40; // 10 hours * 4 quarters
 
 		--header--gap: 1rem;
 		--column--gap: 0.5rem;

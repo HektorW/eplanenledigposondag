@@ -7,7 +7,7 @@
 
 	const { weatherEntries }: TimeAxisProps = $props();
 
-	const hours = 9;
+	const hours = 10;
 	const startHour = 9;
 </script>
 
@@ -27,6 +27,11 @@
 					weatherEntry.data.next_6_hours?.summary?.symbol_code ??
 					null}
 				{@const temperature = weatherEntry.data.instant?.details?.air_temperature ?? null}
+				{@const precipitationAmount = weatherEntry.data.next_1_hours?.details?.precipitation_amount}
+				{@const precipitationMin =
+					weatherEntry.data.next_1_hours?.details?.precipitation_amount_min ?? 0}
+				{@const precipitationMax =
+					weatherEntry.data.next_1_hours?.details?.precipitation_amount_max ?? 0.4}
 
 				<div class="weather">
 					{#if iconName}
@@ -35,6 +40,12 @@
 
 					{#if temperature}
 						<div class="temperature">{temperature.toFixed(1)}°</div>
+					{/if}
+
+					{#if precipitationMax}
+						<div class="precipitation">{precipitationMin}-{precipitationMax} mm</div>
+					{:else if precipitationAmount}
+						<div class="precipitation">{precipitationAmount} mm</div>
 					{/if}
 				</div>
 			{/if}
@@ -67,6 +78,7 @@
 			.weather {
 				align-items: center;
 				display: flex;
+				flex-wrap: wrap;
 				opacity: 0.5;
 
 				img {
@@ -79,6 +91,11 @@
 				.temperature {
 					font-size: 0.6rem;
 					font-weight: 400;
+				}
+
+				.precipitation {
+					flex-basis: 100%;
+					font-size: 0.45em;
 				}
 			}
 		}

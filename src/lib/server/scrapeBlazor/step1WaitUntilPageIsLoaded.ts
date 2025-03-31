@@ -1,33 +1,21 @@
 import type { Page } from 'puppeteer-core';
-import { waitForElementWithText } from './waitFor';
-import { getElementsTexts, getElementWithText } from './getElementWithText';
-import { selectors, texts } from './selectorsAndTexts';
+import { waitFor } from './waitFor';
+import { withSelector } from './withElement';
 
 export async function waitUntilPageIsLoaded(page: Page) {
-	await waitForMenuItems(page);
-	await waitForSearchInput(page);
+	await waitForSearchInputToBeCleared(page);
 }
 
-async function waitForMenuItems(page: Page) {
-	console.log('Waiting for menu items...');
-	try {
-		await waitForElementWithText(page, selectors.menuItem, texts.menuItem);
-	} catch (error) {
-		console.log('waitForElementWithText timed out. Could not find menu items');
-		const menuItemsText = await getElementsTexts(await page.$$(selectors.menuItem));
-		console.log('Menu items:', menuItemsText);
-		throw error;
-	}
-	console.log('Menu items found');
-	const menuItemsText = await getElementsTexts(await page.$$(selectors.menuItem));
-	console.log('Menu items:', menuItemsText);
-}
+// Blazor will clear the input when hydrating the DOM
+async function waitForSearchInputToBeCleared(page: Page) {
+	console.log('Waiting for search input to be cleared...');
+	await withSelector(page, 'input[type="text"]', async (firstSearchInput) => {
+		await firstSearchInput?.type('waiting');
 
-async function waitForSearchInput(page: Page) {
-	console.log('Waiting for search input...');
-	const searchInput = await page.waitForSelector(selectors.searchInput);
-	if (!searchInput) {
-		throw new Error('Search input not found');
-	}
-	console.log('Search input found');
+		await waitFor(async () => {
+			const freshSearchInput = await page.waitForSelector('input[type="text"]');
+			const inputValue = await freshSearchInput?.evaluate((el) => (el as HTMLInputElement).value);
+			return inputValue === 'waiting' ? null : true;
+		});
+	});
 }

@@ -6,6 +6,13 @@ export async function getAllElementsWithText<Selector extends string>(
 	text: string
 ): Promise<ElementHandle<NodeFor<Selector>>[]> {
 	const elements = await page.$$(selector);
+	return filterElementsWithText(elements, text);
+}
+
+export async function filterElementsWithText<TElement extends Element>(
+	elements: ElementHandle<TElement>[],
+	text: string
+): Promise<ElementHandle<TElement>[]> {
 	const matchingElements = [];
 
 	for (const element of elements) {

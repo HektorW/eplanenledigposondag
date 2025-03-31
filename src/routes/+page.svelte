@@ -1,4 +1,5 @@
 <script lang="ts">
+	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import type { ParsedWeatherTimeEntry } from '$lib/types';
 	import { symbolCodeLabel } from '$lib/weatherLabels';
@@ -7,7 +8,6 @@
 
 	const nextSundayDate = new Date(data.date);
 
-	const calendar = data.calendar;
 	const weather = data.weather;
 
 	const sundayWeatherEntries =
@@ -31,8 +31,6 @@
 <svelte:head>
 	<title>E Planen Ledig På Söndag - Söndagsboll ⚽️</title>
 </svelte:head>
-
-<!-- <code><pre>{JSON.stringify(sundayWeatherEntries, null, 2)}</pre></code> -->
 
 <main>
 	<h1 class="title">Söndagsboll ⚽️</h1>
@@ -59,17 +57,45 @@
 		{/if}
 	</p>
 
-	<h2>
-		{data.calendar.Data[0]?.Title ?? 'Failed to scrape'}
-	</h2>
+	{#await data.calendar}
+		<BigLoader
+			texts={[
+				'Letar efter lediga tider...',
+				middayWeatherLabel && `Ser ut att bli ${middayWeatherLabel}.`,
+				'✨ Kul med fotboll ✨',
+				'Hoppas vi blir många 🥳',
+				'Tar lite tid visst 👀',
+				'Det är inte mitt fel 😩',
+				'Satans blazor 😭',
+				'Vi börjar om 🙃'
+			].filter((text): text is string => !!text)}
+		/>
+	{:then calendar}
+		<Calendar bookings={calendar} weatherEntries={sundayWeatherEntries} />
+	{:catch error}
+		<div>
+			<h2>Nåt gick riktigt snett 😭.</h2>
 
-	<!-- <Calendar calendarEntries={calendar.Data} weatherEntries={sundayWeatherEntries} /> -->
+			<p>Här är felet:</p>
+			<code><pre>{JSON.stringify(error, null, 2)}</pre></code>
+
+			<p>
+				Skriv till Hektor eller ännu bättre lägg en PR <a
+					href="https://github.com/HektorW/eplanenledigposondag"
+					target="_blank">https://github.com/HektorW/eplanenledigposondag</a
+				>
+			</p>
+		</div>
+	{/await}
 </main>
 
 <style>
 	main {
+		display: grid;
+		grid-template-rows: auto auto 1fr;
 		margin-inline: auto;
 		max-width: 50em;
+		min-height: 100svh;
 		padding: 1rem;
 	}
 

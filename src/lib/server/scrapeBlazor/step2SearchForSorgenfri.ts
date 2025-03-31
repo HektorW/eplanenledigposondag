@@ -1,9 +1,10 @@
 import type { Page } from 'puppeteer-core';
-import { selectors, texts } from './selectorsAndTexts';
+import { selectors, texts } from './constants';
 import { waitFor } from './waitFor';
-import { getAllElementsWithText } from './getElementWithText';
+import { filterElementsWithText, getAllElementsWithText } from './getElementWithText';
 import { attempt, isFail } from '$lib/attempt';
 import { assertNonNullish } from '$lib/assert';
+import { withSelector } from './withElement';
 
 export async function searchForSorgenfri(page: Page) {
 	await searchAndClickLabels(page);
@@ -21,19 +22,37 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 		return searchAndClickLabels(page, retryCount + 1);
 	}
 
-	const searchInput = await page.waitForSelector(selectors.searchInput);
+	await withSelector(page, selectors.searchInput, async (searchInput) => {
+		assertNonNullish(searchInput, 'Search input not found');
 
-	assertNonNullish(searchInput, 'Search input not found');
+		await searchInput.evaluate((el) => ((el as HTMLInputElement).value = ''));
 
-	await searchInput.evaluate((el) => ((el as HTMLInputElement).value = ''));
-	await searchInput.type('sorgenfri');
-	await searchInput.press('Enter');
+		// enough to only get sorgenfri hits, avoids detched
+		// avoids additional searches which detaches found labels
+		const searchTerm = 'sor ma';
+		await searchInput.type(searchTerm);
+		await searchInput.press('Enter');
+	});
 
 	const sorgenfriLabels = await attempt(() =>
 		waitFor(
 			async () => {
-				const labels = await getAllElementsWithText(page, selectors.resourceLabel, texts.sorgenfri);
-				return labels.length >= 3 ? labels : null;
+				const expectedTotalLabels = 3;
+				const expectedSorgenfriIpLabels = 3;
+
+				const allLabels = await page.$$(selectors.resourceLabel);
+				if (allLabels.length !== expectedTotalLabels) {
+					allLabels.forEach((label) => label.dispose());
+					return null;
+				}
+
+				const sorgenfriIpLabels = await filterElementsWithText(allLabels, texts.sorgenfriIp);
+				if (sorgenfriIpLabels.length !== expectedSorgenfriIpLabels) {
+					allLabels.forEach((label) => label.dispose());
+					return null;
+				}
+
+				return sorgenfriIpLabels;
 			},
 			{
 				maxTime: 500,
@@ -52,12 +71,14 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 		const labelFor = await label.evaluate((el) => el.getAttribute('for'));
 		if (!labelFor) {
 			console.log('Label for attribute not found', { index: sorgenfriLabels.indexOf(label) });
+			sorgenfriLabels.forEach((label) => label.dispose());
 			return restartSearch();
 		}
 
 		const inputElement = await page.$(`[id="${labelFor}"]`);
 		if (!inputElement) {
 			console.log('Input element not found for label', { index: sorgenfriLabels.indexOf(label) });
+			sorgenfriLabels.forEach((label) => label.dispose());
 			return restartSearch();
 		}
 
@@ -69,8 +90,11 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 					index: sorgenfriLabels.indexOf(label),
 					error: clickResult.error
 				});
+				sorgenfriLabels.forEach((label) => label.dispose());
 				return restartSearch();
 			}
 		}
 	}
+
+	sorgenfriLabels.forEach((label) => label.dispose());
 }

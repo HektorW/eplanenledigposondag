@@ -1,6 +1,6 @@
 export const texts = {
 	menuItem: 'Resources',
-	sorgenfri: 'Sorgenfri IP'
+	sorgenfriIp: 'Sorgenfri IP'
 } as const;
 
 export const selectors = {
@@ -8,3 +8,5 @@ export const selectors = {
 	searchInput: '#main input[placeholder="-- search --"]',
 	resourceLabel: '#Resurser label'
 } as const;
+
+export const resourceAndDateRegex = /(?:7-manna (\d))?, Starts at ([^,]+), Ends at (.+)$/;
