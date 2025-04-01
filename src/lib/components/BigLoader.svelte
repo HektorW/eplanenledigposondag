@@ -4,22 +4,22 @@
 	import BouncyLoader from './BouncyLoader.svelte';
 
 	type BigLoaderProps = {
-		texts?: string[];
+		messages?: (string | { text: string; imageUrl: string })[];
 		delayMs?: number;
 	};
 
-	const { texts, delayMs = 3000 }: BigLoaderProps = $props();
+	const { messages, delayMs = 3000 }: BigLoaderProps = $props();
 
-	let activeTextIndex = $state(0);
-	let activeText = $derived(texts?.[activeTextIndex]);
+	let activeMessageIndex = $state(0);
+	let activeMessage = $derived(messages?.[activeMessageIndex]);
 
 	$effect(() => {
-		if (texts?.length) {
-			activeTextIndex = 0;
+		if (messages?.length) {
+			activeMessageIndex = 0;
 		}
 
 		const interval = setInterval(() => {
-			activeTextIndex = (activeTextIndex + 1) % (texts?.length ?? 0);
+			activeMessageIndex = (activeMessageIndex + 1) % (messages?.length ?? 0);
 		}, delayMs);
 
 		return () => {
@@ -44,10 +44,14 @@
 <section>
 	<BouncyLoader />
 
-	{#if activeText}
-		{#key activeText}
+	{#if activeMessage}
+		{#key activeMessage}
 			<p in:fadeSlide={{ direction: 1, delay: 300 }} out:fadeSlide={{ direction: -1 }}>
-				{activeText}
+				{#if typeof activeMessage === 'string'}
+					{activeMessage}
+				{:else}
+					{activeMessage.text} <img src={activeMessage.imageUrl} alt="" />
+				{/if}
 			</p>
 		{/key}
 	{:else}
@@ -66,5 +70,10 @@
 	p {
 		grid-column: 1;
 		grid-row: 2;
+
+		img {
+			height: 1em;
+			width: 1em;
+		}
 	}
 </style>

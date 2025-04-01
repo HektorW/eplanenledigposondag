@@ -26,6 +26,36 @@
 		null;
 	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
 	const middayWeatherTemperature = middayWeather?.data.instant?.details?.air_temperature ?? null;
+
+	const loadingMessages: Array<string | { text: string; imageUrl: string }> = [
+		'Letar efter lediga tider...'
+	];
+
+	if (middayWeatherLabel) {
+		const text = `Ser ut att bli ${middayWeatherLabel}`;
+
+		if (middayWeatherSymbol) {
+			loadingMessages.push({
+				text: `Ser ut att bli ${middayWeatherLabel}`,
+				imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
+			});
+		} else {
+			loadingMessages.push(text);
+		}
+	}
+
+	loadingMessages.push(
+		'Kul med fotboll ✨',
+		'Hoppas vi blir många 🤞😮‍💨',
+		'Tar visst lite tid 👀',
+		'Det är inte mitt fel 😩',
+		'Satans blazor 😭',
+		'Ses på söndag? 👋',
+		'Nu borde det komma något snart 🤔',
+		'Skulle jag gissa att det kommer krascha 😬',
+		'Nu har jag inte fler texter 🙃',
+		'Vi börjar om 🥸'
+	);
 </script>
 
 <svelte:head>
@@ -58,18 +88,7 @@
 	</p>
 
 	{#await data.calendar}
-		<BigLoader
-			texts={[
-				'Letar efter lediga tider...',
-				middayWeatherLabel && `Ser ut att bli ${middayWeatherLabel}.`,
-				'✨ Kul med fotboll ✨',
-				'Hoppas vi blir många 🥳',
-				'Tar lite tid visst 👀',
-				'Det är inte mitt fel 😩',
-				'Satans blazor 😭',
-				'Vi börjar om 🙃'
-			].filter((text): text is string => !!text)}
-		/>
+		<BigLoader messages={loadingMessages} />
 	{:then calendar}
 		<Calendar bookings={calendar} weatherEntries={sundayWeatherEntries} />
 	{:catch error}
