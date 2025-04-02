@@ -17,6 +17,8 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 	logger.debug('Searching for "sorgenfri" and selecting labels...', { retryCount });
 
 	function restartSearch() {
+		logger.debug('Trying restart search for labels', { retryCount });
+
 		const maxRetries = 2;
 		if (retryCount >= maxRetries) {
 			throw new Error('Max attempts reached for clicking searching and clicking labels');
@@ -26,17 +28,25 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 	}
 
 	await withSelector(page, selectors.searchInput, async (searchInput) => {
+		logger.debug('Found search input');
 		assertNonNullish(searchInput, 'Search input not found');
 
+		const searchInputValue = await searchInput.evaluate((el) => (el as HTMLInputElement).value);
+		logger.debug('Current search input value:', searchInputValue);
+
 		await searchInput.evaluate((el) => ((el as HTMLInputElement).value = ''));
+		logger.debug('Set search input value to empty string');
 
 		// enough to only get sorgenfri hits, avoids detched
 		// avoids additional searches which detaches found labels
 		const searchTerm = 'sor ma';
 		await searchInput.type(searchTerm);
+		logger.debug('Typed search term:', searchTerm);
 		await searchInput.press('Enter');
+		logger.debug('Pressed Enter on search input');
 	});
 
+	logger.debug('Looking for correct labels to appear...');
 	const sorgenfriLabels = await attempt(() =>
 		waitFor(
 			async () => {
@@ -45,12 +55,14 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 
 				const allLabels = await page.$$(selectors.resourceLabel);
 				if (allLabels.length !== expectedTotalLabels) {
+					logger.debug('Found labels with wrong count:', { count: allLabels.length });
 					allLabels.forEach((label) => label.dispose());
 					return null;
 				}
 
 				const sorgenfriIpLabels = await filterElementsWithText(allLabels, texts.sorgenfriIp);
 				if (sorgenfriIpLabels.length !== expectedSorgenfriIpLabels) {
+					logger.debug('Found labels with wrong sorgenfri IP count:', { sorgenfriIpLabels });
 					allLabels.forEach((label) => label.dispose());
 					return null;
 				}
