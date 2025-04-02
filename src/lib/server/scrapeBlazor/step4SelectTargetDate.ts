@@ -27,8 +27,7 @@ export async function selectTargetDate(page: Page, targetDate: Date, retryCount 
 	});
 
 	if (!elementText.includes(targetDateStr)) {
-		logger.debug('Target day not found, selecting next day...', {
-			targetDateStr,
+		logger.debug('Target day not found, selecting next day', {
 			elementText
 		});
 
