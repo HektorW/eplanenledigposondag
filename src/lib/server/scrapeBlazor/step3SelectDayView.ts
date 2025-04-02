@@ -1,16 +1,19 @@
 import type { Page } from 'puppeteer-core';
 import { assertNonNullish } from '$lib/assert';
 import { waitFor, waitForElementWithText } from './waitFor';
+import { createLogger } from '../logger2';
+
+const logger = createLogger('scrapeBlazor:step3SelectDayView');
 
 export async function selectDayView(page: Page) {
-	console.log('Selecting day view...');
+	logger.debug('Selecting day view...');
 	const dayBtn = await waitForElementWithText(page, '.k-toolbar .k-button-group button', 'Day');
 	assertNonNullish(dayBtn, 'Day button not found');
 	await dayBtn.click();
-	console.log('Day button clicked');
+	logger.debug('Day button clicked');
 
 	await waitUntilDayViewIsVisible(page);
-	console.log('Day view is visible');
+	logger.debug('Day view is visible');
 }
 
 async function waitUntilDayViewIsVisible(page: Page) {
@@ -19,7 +22,7 @@ async function waitUntilDayViewIsVisible(page: Page) {
 			const row = await page.$('.k-scheduler-body .k-scheduler-row');
 
 			const cells = await row?.$$('.k-slot-cell');
-			console.log('waitUntilDayViewIsVisible', {
+			logger.debug('waitUntilDayViewIsVisible', {
 				cells: cells?.length
 			});
 			return cells?.length === 3 ? true : null;

@@ -1,17 +1,20 @@
 import type { Page } from 'puppeteer-core';
 import { selectors, texts } from './constants';
 import { waitFor } from './waitFor';
-import { filterElementsWithText, getAllElementsWithText } from './getElementWithText';
+import { filterElementsWithText } from './getElementWithText';
 import { attempt, isFail } from '$lib/attempt';
 import { assertNonNullish } from '$lib/assert';
 import { withSelector } from './withElement';
+import { createLogger } from '../logger2';
+
+const logger = createLogger('scrapeBlazor:step2SearchForSorgenfri');
 
 export async function searchForSorgenfri(page: Page) {
 	await searchAndClickLabels(page);
 }
 
 export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<void> {
-	console.log('Searching for "sorgenfri" and selecting labels...', { retryCount });
+	logger.debug('Searching for "sorgenfri" and selecting labels...', { retryCount });
 
 	function restartSearch() {
 		const maxRetries = 2;
@@ -61,23 +64,23 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 		)
 	);
 	if (isFail(sorgenfriLabels)) {
-		console.log('Error while searching for labels:', sorgenfriLabels.error);
+		logger.debug('Error while searching for labels:', sorgenfriLabels.error);
 		return restartSearch();
 	}
 
-	console.log('Found sorgenfri labels, clicking on them:', { count: sorgenfriLabels.length });
+	logger.debug('Found sorgenfri labels, clicking on them:', { count: sorgenfriLabels.length });
 
 	for (const label of sorgenfriLabels) {
 		const labelFor = await label.evaluate((el) => el.getAttribute('for'));
 		if (!labelFor) {
-			console.log('Label for attribute not found', { index: sorgenfriLabels.indexOf(label) });
+			logger.debug('Label for attribute not found', { index: sorgenfriLabels.indexOf(label) });
 			sorgenfriLabels.forEach((label) => label.dispose());
 			return restartSearch();
 		}
 
 		const inputElement = await page.$(`[id="${labelFor}"]`);
 		if (!inputElement) {
-			console.log('Input element not found for label', { index: sorgenfriLabels.indexOf(label) });
+			logger.debug('Input element not found for label', { index: sorgenfriLabels.indexOf(label) });
 			sorgenfriLabels.forEach((label) => label.dispose());
 			return restartSearch();
 		}
@@ -86,7 +89,7 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 		if (!isChecked) {
 			const clickResult = await attempt(() => label.click());
 			if (isFail(clickResult)) {
-				console.log('Failed to click label', {
+				logger.debug('Failed to click label', {
 					index: sorgenfriLabels.indexOf(label),
 					error: clickResult.error
 				});

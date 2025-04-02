@@ -1,5 +1,8 @@
 import puppeteerCore, { Page, type Browser, type LaunchOptions } from 'puppeteer-core';
 import chromium from '@sparticuz/chromium-min';
+import { createLogger } from '../logger2';
+
+const logger = createLogger('scrapeBlazor:getBrowser');
 
 const remoteExecutablePath =
 	'https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar';
@@ -11,7 +14,7 @@ type BrowserOptions = Pick<LaunchOptions, 'defaultViewport' | 'headless'>;
 
 export async function getBrowser(options?: BrowserOptions) {
 	if (!sharedBrowser?.connected) {
-		console.log('Creating new browser instance', { isLocal });
+		logger.debug('Creating new browser instance', { isLocal });
 
 		const baseArgs = ['--locale=en-US', '--accept-lang=en-US'];
 

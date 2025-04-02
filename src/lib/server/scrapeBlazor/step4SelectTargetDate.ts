@@ -4,6 +4,9 @@ import { waitFor } from './waitFor';
 import { resourceAndDateRegex } from './constants';
 import { with$$, withSelector } from './withElement';
 import { attempt, isFail } from '$lib/attempt';
+import { createLogger } from '../logger2';
+
+const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
 
 export async function selectTargetDate(page: Page, targetDate: Date, retryCount = 0) {
 	if (retryCount > 10) {
@@ -24,7 +27,7 @@ export async function selectTargetDate(page: Page, targetDate: Date, retryCount 
 	});
 
 	if (!elementText.includes(targetDateStr)) {
-		console.log('Target day not found, selecting next day...', {
+		logger.debug('Target day not found, selecting next day...', {
 			targetDateStr,
 			elementText
 		});
@@ -43,13 +46,13 @@ export async function selectTargetDate(page: Page, targetDate: Date, retryCount 
 			)
 		);
 		if (isFail(waitingForNewTextResult)) {
-			console.log('Failed to find new text after clicking next button');
+			logger.debug('Failed to find new text after clicking next button');
 		}
 
 		return selectTargetDate(page, targetDate, retryCount + 1);
 	}
 
-	console.log('Found target day:', elementText);
+	logger.debug('Found target day:', elementText);
 	await waitForTargetDateBookingsAreVisible(page, targetDate);
 }
 
@@ -61,7 +64,7 @@ async function selectNextDay(page: Page) {
 }
 
 async function waitForTargetDateBookingsAreVisible(page: Page, targetDate: Date) {
-	console.log('Waiting for target date bookings to be visible...');
+	logger.debug('Waiting for target date bookings to be visible...');
 
 	await waitFor(async (elapsedTime) => {
 		return with$$(page, '.k-scheduler-body .k-event', async (allBookings) => {
@@ -90,5 +93,5 @@ async function waitForTargetDateBookingsAreVisible(page: Page, targetDate: Date)
 		});
 	});
 
-	console.log('Target date bookings are visible');
+	logger.debug('Target date bookings are visible');
 }

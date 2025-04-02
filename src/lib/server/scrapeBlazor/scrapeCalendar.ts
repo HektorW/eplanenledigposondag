@@ -1,4 +1,5 @@
 import type { Booking } from '$lib/types';
+import { createLogger } from '../logger2';
 import { withBrowserAndPage } from './getBrowser';
 import { waitUntilPageIsLoaded } from './step1WaitUntilPageIsLoaded';
 import { searchForSorgenfri } from './step2SearchForSorgenfri';
@@ -8,9 +9,11 @@ import { scrapeAllBookings } from './step5ScrapeBookings';
 
 const baseUrl = 'https://malmo.rbok.se/boka-resurser';
 
+const logger = createLogger('scrapeBlazor:scrapeCalendar');
+
 export async function scrapeCalendar(targetDate: Date): Promise<Booking[]> {
-	console.log('Scraping blazor calendar...');
-	console.log('Target date:', targetDate.toISOString());
+	logger.info('Scraping blazor calendar...');
+	logger.debug('Target date:', targetDate.toISOString());
 
 	const allBookings = await withBrowserAndPage<Booking[]>(
 		{
@@ -18,7 +21,7 @@ export async function scrapeCalendar(targetDate: Date): Promise<Booking[]> {
 			headless: true
 		},
 		async (browser, page) => {
-			console.log('Navigating to URL:', baseUrl);
+			logger.debug('Navigating to URL:', baseUrl);
 			await page.goto(`${baseUrl}`);
 
 			await waitUntilPageIsLoaded(page);
@@ -30,8 +33,8 @@ export async function scrapeCalendar(targetDate: Date): Promise<Booking[]> {
 		}
 	);
 
-	console.log('Finished scraping calendar');
-	console.log(allBookings);
+	logger.info('Finished scraping calendar');
+	logger.debug(allBookings);
 
 	return allBookings;
 }
