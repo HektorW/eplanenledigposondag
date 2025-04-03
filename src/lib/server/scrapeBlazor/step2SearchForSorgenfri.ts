@@ -40,7 +40,7 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 		// enough to only get sorgenfri hits, avoids detched
 		// avoids additional searches which detaches found labels
 		const searchTerm = 'sor ma';
-		await searchInput.type(searchTerm);
+		await searchInput.type(searchTerm, { delay: 50 });
 		logger.debug('Typed search term:', searchTerm);
 		await searchInput.press('Enter');
 		logger.debug('Pressed Enter on search input');
