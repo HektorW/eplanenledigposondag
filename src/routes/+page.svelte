@@ -1,8 +1,9 @@
 <script lang="ts">
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
-	import type { ParsedWeatherTimeEntry } from '$lib/types';
+	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
 	import { symbolCodeLabel } from '$lib/weatherLabels';
+	import { invalidateAll } from '$app/navigation';
 
 	export let data;
 
@@ -32,15 +33,13 @@
 	];
 
 	if (middayWeatherLabel) {
-		const text = `Ser ut att bli ${middayWeatherLabel}`;
-
 		if (middayWeatherSymbol) {
 			loadingMessages.push({
 				text: `Ser ut att bli ${middayWeatherLabel}`,
 				imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
 			});
 		} else {
-			loadingMessages.push(text);
+			loadingMessages.push(`Ser ut att bli ${middayWeatherLabel}`);
 		}
 	}
 
@@ -56,6 +55,30 @@
 		'Nu har jag inte fler texter 🙃',
 		'Vi börjar om 🥸'
 	);
+
+	let refreshing = false;
+
+	async function triggerRefresh() {
+		if (refreshing) return;
+		refreshing = true;
+		await invalidateAll();
+		refreshing = false;
+	}
+
+	function formatScrapedAt(isoString: string): string {
+		const date = new Date(isoString);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMin = Math.floor(diffMs / 60000);
+
+		if (diffMin < 1) return 'just nu';
+		if (diffMin === 1) return '1 minut sedan';
+		if (diffMin < 60) return `${diffMin} minuter sedan`;
+
+		const diffHours = Math.floor(diffMin / 60);
+		if (diffHours === 1) return '1 timme sedan';
+		return `${diffHours} timmar sedan`;
+	}
 </script>
 
 <svelte:head>
@@ -87,31 +110,61 @@
 		{/if}
 	</p>
 
-	{#await data.calendar}
-		<BigLoader messages={loadingMessages} />
-	{:then calendar}
-		<Calendar bookings={calendar} weatherEntries={sundayWeatherEntries} />
-	{:catch error}
-		<div>
-			<h2>Nåt gick riktigt snett 😭.</h2>
-
-			<p>Här är felet:</p>
-			<code><pre>{JSON.stringify(error, null, 2)}</pre></code>
-
-			<p>
-				Skriv till Hektor eller ännu bättre lägg en PR <a
-					href="https://github.com/HektorW/eplanenledigposondag"
-					target="_blank">https://github.com/HektorW/eplanenledigposondag</a
-				>
+	{#if data.fresh}
+		{#await data.fresh}
+			{#if data.bookings && data.scrapedAt}
+				<p class="freshness">
+					Hämtades {formatScrapedAt(data.scrapedAt)}
+					<span class="refreshing">&middot; Uppdaterar...</span>
+				</p>
+				<Calendar bookings={data.bookings} weatherEntries={sundayWeatherEntries} />
+			{:else}
+				<BigLoader messages={loadingMessages} />
+			{/if}
+		{:then fresh}
+			<p class="freshness">
+				Hämtades {formatScrapedAt(fresh.scrapedAt)}
+				<button class="refresh-btn" onclick={triggerRefresh} disabled={refreshing}>
+					{refreshing ? 'Uppdaterar...' : 'Uppdatera'}
+				</button>
 			</p>
-		</div>
-	{/await}
+			<Calendar bookings={fresh.bookings} weatherEntries={sundayWeatherEntries} />
+		{:catch}
+			{#if data.bookings && data.scrapedAt}
+				<p class="freshness">
+					Hämtades {formatScrapedAt(data.scrapedAt)}
+					<button class="refresh-btn" onclick={triggerRefresh} disabled={refreshing}>
+						{refreshing ? 'Uppdaterar...' : 'Uppdatera'}
+					</button>
+				</p>
+				<Calendar bookings={data.bookings} weatherEntries={sundayWeatherEntries} />
+			{:else}
+				<div>
+					<h2>Nåt gick riktigt snett 😭.</h2>
+					<p>
+						Skriv till Hektor eller ännu bättre lägg en PR <a
+							href="https://github.com/HektorW/eplanenledigposondag"
+							target="_blank">https://github.com/HektorW/eplanenledigposondag</a
+						>
+					</p>
+				</div>
+			{/if}
+		{/await}
+	{:else if data.bookings && data.scrapedAt}
+		<p class="freshness">
+			Hämtades {formatScrapedAt(data.scrapedAt)}
+			<button class="refresh-btn" onclick={triggerRefresh} disabled={refreshing}>
+				{refreshing ? 'Uppdaterar...' : 'Uppdatera'}
+			</button>
+		</p>
+		<Calendar bookings={data.bookings} weatherEntries={sundayWeatherEntries} />
+	{/if}
 </main>
 
 <style>
 	main {
 		display: grid;
-		grid-template-rows: auto auto 1fr;
+		grid-template-rows: auto auto auto 1fr;
 		margin-inline: auto;
 		max-width: 50em;
 		min-height: 100svh;
@@ -129,11 +182,49 @@
 		display: flex;
 		font-size: 1rem;
 		font-weight: 400;
-		margin-block: 0 2rem;
+		margin-block: 0 0;
 
 		img {
 			height: 1em;
 			width: 1em;
+		}
+	}
+
+	.freshness {
+		font-size: 0.75rem;
+		opacity: 0.6;
+		margin-block: 0.25rem 1.5rem;
+	}
+
+	.refreshing {
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.refresh-btn {
+		all: unset;
+		cursor: pointer;
+		margin-left: 0.5em;
+		text-decoration: underline;
+		text-decoration-style: dotted;
+		text-underline-offset: 2px;
+
+		&:hover {
+			opacity: 1;
+		}
+
+		&:disabled {
+			cursor: default;
+			animation: pulse 1.5s ease-in-out infinite;
+		}
+	}
+
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.4;
 		}
 	}
 </style>
