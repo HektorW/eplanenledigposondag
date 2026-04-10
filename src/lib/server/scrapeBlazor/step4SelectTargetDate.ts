@@ -1,9 +1,7 @@
 import { assertNonNullish } from '$lib/assert';
 import type { Page } from 'puppeteer-core';
-import { waitFor } from './waitFor';
 import { resourceAndDateRegex } from './constants';
-import { with$$, withSelector } from './withElement';
-import { attempt, isFail } from '$lib/attempt';
+import { withSelector } from './withElement';
 import { createLogger } from '../logger2';
 
 const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
@@ -33,18 +31,17 @@ export async function selectTargetDate(page: Page, targetDate: Date, retryCount 
 
 		await selectNextDay(page);
 
-		const waitingForNewTextResult = await attempt(() =>
-			waitFor(
-				async () => {
-					return withSelector(page, '.k-link.k-nav-day', async (newElement) => {
-						const newText = await newElement?.evaluate((el) => el.textContent?.trim());
-						return newText !== elementText;
-					});
+		// Wait for the date text to change inside the browser — no CDP round trips per poll
+		try {
+			await page.waitForFunction(
+				(oldText: string) => {
+					const el = document.querySelector('.k-link.k-nav-day');
+					return el?.textContent?.trim() !== oldText;
 				},
-				{ maxTime: 500, pollInterval: 50 }
-			)
-		);
-		if (isFail(waitingForNewTextResult)) {
+				{ timeout: 500 },
+				elementText
+			);
+		} catch {
 			logger.debug('Failed to find new text after clicking next button');
 		}
 
@@ -65,32 +62,43 @@ async function selectNextDay(page: Page) {
 async function waitForTargetDateBookingsAreVisible(page: Page, targetDate: Date) {
 	logger.debug('Waiting for target date bookings to be visible...');
 
-	await waitFor(async (elapsedTime) => {
-		return with$$(page, '.k-scheduler-body .k-event', async (allBookings) => {
-			const firstBooking = allBookings[0];
-			if (!firstBooking) {
-				// We have no way of knowing if it means there are no bookings for target date
-				// or if there were no bookings for the previous date.
-				// If enough time has elapsed we assume there are no bookings for the target date.
-				return elapsedTime > 500;
-			}
+	const targetMonth = targetDate.getMonth() + 1;
+	const targetDay = targetDate.getDate();
 
-			const ariaLabel = await firstBooking.evaluate((el) => el.getAttribute('aria-label'));
-			assertNonNullish(ariaLabel, 'aria-label not found on event element');
+	// First check if any events appear within 500ms.
+	// If none appear, assume it's an empty day and move on quickly.
+	let hasEvents = false;
+	try {
+		await page.waitForFunction(
+			() => document.querySelectorAll('.k-scheduler-body .k-event').length > 0,
+			{ timeout: 500 }
+		);
+		hasEvents = true;
+	} catch {
+		// No events appeared — likely an empty day
+	}
 
-			allBookings.forEach((booking) => {
-				booking.dispose();
-			});
-
-			const match = ariaLabel.match(resourceAndDateRegex);
-			assertNonNullish(match, 'Failed to match resource and date from aria-label');
-
-			const startDate = match[2];
-			const [month, day] = startDate.split('/').map(Number);
-
-			return month === targetDate.getMonth() + 1 && day === targetDate.getDate();
-		});
-	});
+	if (hasEvents) {
+		// Events exist — wait for them to match the target date
+		await page.waitForFunction(
+			(month: number, day: number, regexSource: string) => {
+				const events = document.querySelectorAll('.k-scheduler-body .k-event');
+				const first = events[0];
+				if (!first) return false;
+				const ariaLabel = first.getAttribute('aria-label');
+				if (!ariaLabel) return false;
+				const match = ariaLabel.match(new RegExp(regexSource));
+				if (!match) return false;
+				const startDate = match[2];
+				const [m, d] = startDate.split('/').map(Number);
+				return m === month && d === day;
+			},
+			{ timeout: 2000 },
+			targetMonth,
+			targetDay,
+			resourceAndDateRegex.source
+		);
+	}
 
 	logger.debug('Target date bookings are visible');
 }

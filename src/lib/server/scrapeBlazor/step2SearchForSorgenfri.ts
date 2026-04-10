@@ -1,6 +1,5 @@
 import type { Page } from 'puppeteer-core';
 import { selectors, texts } from './constants';
-import { waitFor } from './waitFor';
 import { filterElementsWithText } from './getElementWithText';
 import { attempt, isFail } from '$lib/attempt';
 import { assertNonNullish } from '$lib/assert';
@@ -47,38 +46,34 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 	});
 
 	logger.debug('Looking for correct labels to appear...');
-	const sorgenfriLabels = await attempt(() =>
-		waitFor(
-			async () => {
-				const expectedTotalLabels = 3;
-				const expectedSorgenfriIpLabels = 3;
 
-				const allLabels = await page.$$(selectors.resourceLabel);
-				if (allLabels.length !== expectedTotalLabels) {
-					logger.debug('Found labels with wrong count:', { count: allLabels.length });
-					allLabels.forEach((label) => label.dispose());
-					return null;
-				}
-
-				const sorgenfriIpLabels = await filterElementsWithText(allLabels, texts.sorgenfriIp);
-				if (sorgenfriIpLabels.length !== expectedSorgenfriIpLabels) {
-					logger.debug('Found labels with wrong sorgenfri IP count:', { sorgenfriIpLabels });
-					allLabels.forEach((label) => label.dispose());
-					return null;
-				}
-
-				return sorgenfriIpLabels;
+	// Use page.waitForFunction to poll inside the browser instead of round-tripping
+	// through CDP on every poll iteration. Increased timeout from 500ms to 2000ms
+	// to avoid expensive retries that require re-typing the search.
+	const labelsReady = await attempt(() =>
+		page.waitForFunction(
+			(labelSelector: string, expectedText: string, expectedCount: number) => {
+				const labels = document.querySelectorAll(labelSelector);
+				if (labels.length !== expectedCount) return false;
+				const matching = Array.from(labels).filter((el) =>
+					el.textContent?.includes(expectedText)
+				);
+				return matching.length === expectedCount;
 			},
-			{
-				maxTime: 500,
-				errorMessage: 'searchAndClickLabels: Timeout while waiting for labels'
-			}
+			{ timeout: 2000 },
+			selectors.resourceLabel,
+			texts.sorgenfriIp,
+			3
 		)
 	);
-	if (isFail(sorgenfriLabels)) {
-		logger.debug('Error while searching for labels:', sorgenfriLabels.error);
+	if (isFail(labelsReady)) {
+		logger.debug('Error while waiting for labels:', labelsReady.error);
 		return restartSearch();
 	}
+
+	// Labels confirmed present — query them once for clicking
+	const allLabels = await page.$$(selectors.resourceLabel);
+	const sorgenfriLabels = await filterElementsWithText(allLabels, texts.sorgenfriIp);
 
 	logger.debug('Found sorgenfri labels, clicking on them:', { count: sorgenfriLabels.length });
 
