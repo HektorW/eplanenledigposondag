@@ -18,7 +18,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
       - run: pnpm run lint
-      - run: pnpm exec prettier --check .
+      - run: pnpm exec prettier --check . || (pnpm exec prettier --write . && git diff && exit 1)
 
   unit:
     name: Unit tests
