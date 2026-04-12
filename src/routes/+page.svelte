@@ -2,8 +2,9 @@
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
+	import SharePanel from '$lib/components/SharePanel.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
-	import type { Booking } from '$lib/types';
+	import type { Booking, TimeSuggestion } from '$lib/types';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
 	import { tick, onMount } from 'svelte';
 	import { browser } from '$app/environment';
@@ -20,6 +21,8 @@
 	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
 	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError);
+
+	let suggestion: TimeSuggestion | null = $state(null);
 
 	async function applyFreshResult(result: { bookings: Booking[]; scrapedAt: string }) {
 		const doUpdate = async () => {
@@ -76,7 +79,11 @@
 
 	{#if bookingList && scrapedAt}
 		<FreshnessIndicator {scrapedAt} {refreshing} />
-		<Calendar bookings={bookingList} weatherEntries={middayWeather.targetDateWeatherEntryList} />
+		<Calendar bookings={bookingList} weatherEntries={middayWeather.targetDateWeatherEntryList} bind:suggestion />
+
+		{#if !suggestion}
+			<p class="hint">Tryck på en ledig tid för att skapa ett tidsförslag</p>
+		{/if}
 	{:else if refreshing}
 		<BigLoader messages={loadingMessageList} delayMs={4000} />
 	{:else}
@@ -101,6 +108,16 @@
 		</div>
 	{/if}
 </main>
+
+{#if suggestion && bookingList}
+	<SharePanel
+		{suggestion}
+		bookings={bookingList}
+		date={targetDate}
+		onclose={() => (suggestion = null)}
+		onadjust={(s) => (suggestion = s)}
+	/>
+{/if}
 
 <style>
 	main {
@@ -129,5 +146,12 @@
 			height: 1em;
 			width: 1em;
 		}
+	}
+
+	.hint {
+		font-size: 0.75rem;
+		margin-top: 1.5rem;
+		opacity: 0.45;
+		text-align: center;
 	}
 </style>
