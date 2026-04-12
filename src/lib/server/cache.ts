@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import type { Booking } from '$lib/types';
 import { scrapeCalendar } from './scrapeBlazor/scrapeCalendar';
-import { createLogger } from './logger2';
+import { createLogger } from './logger';
 import { env } from '$env/dynamic/private';
 
 const logger = createLogger('server:cache');

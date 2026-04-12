@@ -4,7 +4,7 @@ import { filterElementsWithText } from './getElementWithText';
 import { attempt, isFail } from '$lib/attempt';
 import { assertNonNullish } from '$lib/assert';
 import { withSelector } from './withElement';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step2SearchForSorgenfri');
 

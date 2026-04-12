@@ -1,7 +1,7 @@
 import type { Page } from 'puppeteer-core';
 import { assertNonNullish } from '$lib/assert';
 import { waitForElementWithText } from './waitFor';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step3SelectDayView');
 
