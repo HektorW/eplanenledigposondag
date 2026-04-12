@@ -1,37 +1,36 @@
 {
 	"name": "sveltekit-2",
 	"version": "0.0.1",
+	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
-		"preview": "vite preview",
+		"dev": "vp dev",
+		"build": "vp build",
+		"preview": "vp preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
-		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"lint": "vp lint",
+		"format": "vp fmt .",
+		"prepare": "vp config"
 	},
-	"devDependencies": {
-		"@sveltejs/adapter-auto": "^3.3.1",
-		"@sveltejs/kit": "^2.20.2",
-		"@sveltejs/vite-plugin-svelte": "^3.1.2",
-		"@types/eslint": "^9.6.1",
-		"eslint": "^9.23.0",
-		"eslint-config-prettier": "^9.1.0",
-		"eslint-plugin-svelte": "^2.46.1",
-		"globals": "^15.15.0",
-		"prettier": "^3.5.3",
-		"prettier-plugin-svelte": "^3.3.3",
-		"sass-embedded": "^1.86.0",
-		"svelte": "^5.25.3",
-		"svelte-check": "^3.8.6",
-		"typescript": "^5.8.2",
-		"typescript-eslint": "^8.28.0",
-		"vite": "^5.4.15"
-	},
-	"type": "module",
 	"dependencies": {
 		"@sparticuz/chromium-min": "^133.0.0",
 		"puppeteer-core": "^24.4.0",
 		"type-fest": "^4.38.0"
-	}
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/kit": "^2.57.1",
+		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"sass-embedded": "^1.86.0",
+		"svelte": "^5.55.3",
+		"svelte-check": "^4.4.6",
+		"typescript": "^5.8.2",
+		"vite": "npm:@voidzero-dev/vite-plus-core@latest",
+		"vite-plus": "latest"
+	},
+	"overrides": {
+		"vite": "npm:@voidzero-dev/vite-plus-core@latest",
+		"vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+	},
+	"packageManager": "npm@11.12.1"
 }
