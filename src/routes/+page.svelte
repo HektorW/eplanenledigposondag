@@ -45,14 +45,14 @@
 		['Hoppas vi blir många 🤞😮‍💨'],
 		['Vem tar med bollen? ⚽️'],
 		['Hoppas ingen bokat hela planen 🤞'],
-		['Ses på söndag? 👋'],
-		['Blazor var ett misstag'],
-		['Malmö stad, skaffa ett API 🙏']
+		['Ses på söndag? 👋']
 	];
 
 	// Messages that should come later — sequences stay together
 	const late: LoadingMessage[][] = [
 		['Tar visst lite tid 👀', 'Det är inte mitt fel 😩'],
+		['Blazor var ett misstag'],
+		['Malmö stad, skaffa ett API 🙏'],
 		['Satans blazor 😭'],
 		['Nu borde det komma något snart 🤔'],
 		['Skulle jag gissa att det kommer krascha 😬']
