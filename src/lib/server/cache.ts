@@ -19,15 +19,15 @@ let redisInstance: Redis | null | undefined;
 function getRedis(): Redis | null {
 	if (redisInstance !== undefined) return redisInstance;
 
-	if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+	if (!env.UPSTASH_KV_REST_API_URL || !env.UPSTASH_KV_REST_API_TOKEN) {
 		logger.debug('Redis not configured, skipping persistent cache');
 		redisInstance = null;
 		return null;
 	}
 
 	redisInstance = new Redis({
-		url: env.UPSTASH_REDIS_REST_URL,
-		token: env.UPSTASH_REDIS_REST_TOKEN
+		url: env.UPSTASH_KV_REST_API_URL,
+		token: env.UPSTASH_KV_REST_API_TOKEN
 	});
 	return redisInstance;
 }
