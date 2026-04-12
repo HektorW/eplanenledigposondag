@@ -9,6 +9,8 @@
 		--c--blue--35: hsl(207, 45%, 35%);
 		--c--blue--96: hsl(207, 100%, 96%);
 
+		--c--blue--28: hsl(207, 55%, 28%);
+		--c--blue--92: hsl(207, 80%, 92%);
 		--c--white--100: hsl(0, 0%, 100%);
 
 		//
@@ -19,6 +21,10 @@
 
 		--c--booking--background: var(--c--blue--35);
 		--c--booking--text: var(--c--white--100);
+
+		--c--surface--raised: var(--c--blue--92);
+
+		--c--focus--outline: var(--c--blue--20);
 
 		--c--grid--line: hsl(from var(--c--main--text) h s l / 15%);
 
@@ -38,6 +44,9 @@
 			--c--main--background: var(--c--blue--20);
 			--c--main--text: var(--c--blue--96);
 
+			--c--focus--outline: var(--c--blue--96);
+			--c--surface--raised: var(--c--blue--28);
+
 			--c--booking--background: var(--c--blue--35);
 			--c--booking--text: var(--c--white--100);
 		}
@@ -53,6 +62,26 @@
 
 	:global(*, *::after, *::before) {
 		box-sizing: border-box;
+	}
+
+	@layer base {
+		:global(:focus-visible) {
+			outline: 3px solid var(--c--focus--outline);
+			outline-offset: 3px;
+
+			@media (prefers-reduced-motion: no-preference) {
+				animation: focus-expand 0.15s ease-out;
+			}
+		}
+
+		@keyframes focus-expand {
+			from {
+				outline-offset: 5px;
+			}
+			to {
+				outline-offset: 3px;
+			}
+		}
 	}
 
 	:global(body) {

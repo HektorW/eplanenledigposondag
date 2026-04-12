@@ -32,6 +32,8 @@ function getRedis(): Redis | null {
 	return redisInstance;
 }
 
+const memoryCache = new Map<string, CacheEntry>();
+
 function cacheKey(targetDate: Date): string {
 	return `bookings:${targetDate.toISOString().slice(0, 10)}`;
 }
@@ -41,28 +43,38 @@ function isStale(entry: CacheEntry): boolean {
 }
 
 async function readCache(targetDate: Date): Promise<CacheEntry | null> {
+	const key = cacheKey(targetDate);
 	const redis = getRedis();
-	if (!redis) return null;
 
-	try {
-		const entry = await redis.get<CacheEntry>(cacheKey(targetDate));
-		return entry ?? null;
-	} catch (error) {
-		logger.error('Failed to read from cache', error);
-		return null;
+	if (redis) {
+		try {
+			const entry = await redis.get<CacheEntry>(key);
+			return entry ?? null;
+		} catch (error) {
+			logger.error('Failed to read from Redis cache', error);
+			return null;
+		}
 	}
+
+	return memoryCache.get(key) ?? null;
 }
 
 async function writeCache(targetDate: Date, entry: CacheEntry): Promise<void> {
+	const key = cacheKey(targetDate);
 	const redis = getRedis();
-	if (!redis) return;
 
-	try {
-		await redis.set(cacheKey(targetDate), entry, { ex: CACHE_TTL_SECONDS });
-		logger.debug('Wrote cache', { key: cacheKey(targetDate) });
-	} catch (error) {
-		logger.error('Failed to write to cache', error);
+	if (redis) {
+		try {
+			await redis.set(key, entry, { ex: CACHE_TTL_SECONDS });
+			logger.debug('Wrote Redis cache', { key });
+		} catch (error) {
+			logger.error('Failed to write to Redis cache', error);
+		}
+		return;
 	}
+
+	memoryCache.set(key, entry);
+	logger.debug('Wrote in-memory cache', { key });
 }
 
 /**
