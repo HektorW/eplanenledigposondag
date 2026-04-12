@@ -14,16 +14,22 @@ type CacheEntry = {
 const STALE_AFTER_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 1 week
 
+let redisInstance: Redis | null | undefined;
+
 function getRedis(): Redis | null {
+	if (redisInstance !== undefined) return redisInstance;
+
 	if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
 		logger.debug('Redis not configured, skipping persistent cache');
+		redisInstance = null;
 		return null;
 	}
 
-	return new Redis({
+	redisInstance = new Redis({
 		url: env.UPSTASH_REDIS_REST_URL,
 		token: env.UPSTASH_REDIS_REST_TOKEN
 	});
+	return redisInstance;
 }
 
 function cacheKey(targetDate: Date): string {

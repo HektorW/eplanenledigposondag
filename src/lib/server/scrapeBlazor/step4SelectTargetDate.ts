@@ -65,13 +65,15 @@ async function waitForTargetDateBookingsAreVisible(page: Page, targetDate: Date)
 	const targetMonth = targetDate.getMonth() + 1;
 	const targetDay = targetDate.getDate();
 
-	// First check if any events appear within 500ms.
-	// If none appear, assume it's an empty day and move on quickly.
+	// First check if any events appear within 1500ms.
+	// If none appear, assume it's an empty day and move on.
+	// Note: the scraper arrives here faster now that CDP polling overhead is gone,
+	// so Blazor needs more wall-clock time to finish rendering events.
 	let hasEvents = false;
 	try {
 		await page.waitForFunction(
 			() => document.querySelectorAll('.k-scheduler-body .k-event').length > 0,
-			{ timeout: 500 }
+			{ timeout: 1500 }
 		);
 		hasEvents = true;
 	} catch {

@@ -3,7 +3,8 @@
 	import Calendar from '$lib/components/Calendar.svelte';
 	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
 	import { symbolCodeLabel } from '$lib/weatherLabels';
-	import { tick } from 'svelte';
+	import { tick, onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	export let data;
 
@@ -79,6 +80,7 @@
 	let bookings: Booking[] | null = data.bookings;
 	let scrapedAt: string | null = data.scrapedAt;
 	let refreshing = !!data.fresh;
+	let scrapeError: unknown = null;
 
 	async function applyUpdate(fresh: { bookings: Booking[]; scrapedAt: string }) {
 		const doUpdate = async () => {
@@ -88,20 +90,23 @@
 			await tick();
 		};
 
-		if (document.startViewTransition) {
+		if (browser && document.startViewTransition) {
 			document.startViewTransition(() => doUpdate());
 		} else {
 			await doUpdate();
 		}
 	}
 
-	if (data.fresh) {
-		data.fresh
-			.then((fresh: { bookings: Booking[]; scrapedAt: string }) => applyUpdate(fresh))
-			.catch(() => {
-				refreshing = false;
-			});
-	}
+	onMount(() => {
+		if (data.fresh) {
+			data.fresh
+				.then((fresh: { bookings: Booking[]; scrapedAt: string }) => applyUpdate(fresh))
+				.catch((error: unknown) => {
+					scrapeError = error;
+					refreshing = false;
+				});
+		}
+	});
 
 	function formatScrapedAt(isoString: string): string {
 		const date = new Date(isoString);
@@ -166,6 +171,10 @@
 	{:else}
 		<div>
 			<h2>Nåt gick riktigt snett 😭.</h2>
+			{#if scrapeError}
+				<p>Här är felet:</p>
+				<code><pre>{JSON.stringify(scrapeError, Object.getOwnPropertyNames(scrapeError), 2)}</pre></code>
+			{/if}
 			<p>
 				Skriv till Hektor eller ännu bättre lägg en PR <a
 					href="https://github.com/HektorW/eplanenledigposondag"

@@ -1,24 +1,10 @@
 import type { Booking } from '$lib/types';
 import type { Page } from 'puppeteer-core';
-import { createBookingEntry } from './createBookingEntry';
+import { createBookingEntry, getResourceIdFromIndex } from './createBookingEntry';
 import { resourceAndDateRegex } from './constants';
-import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 import { createLogger } from '../logger2';
 
 const logger = createLogger('scrapeBlazor:step5ScrapeBookings');
-
-function getResourceIdFromIndex(index: string | undefined): string {
-	switch (index) {
-		case '1':
-			return halfCourtAId;
-
-		case '2':
-			return halfCourtBId;
-
-		default:
-			return fullCourtId;
-	}
-}
 
 export async function scrapeAllBookings(page: Page): Promise<Booking[]> {
 	logger.debug('Scraping all bookings...');
