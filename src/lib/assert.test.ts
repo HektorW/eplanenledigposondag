@@ -20,8 +20,6 @@ describe('assertNonNullish', () => {
 	});
 
 	it('throws for undefined with the provided message', () => {
-		expect(() => assertNonNullish(undefined, 'value was undefined')).toThrow(
-			'value was undefined'
-		);
+		expect(() => assertNonNullish(undefined, 'value was undefined')).toThrow('value was undefined');
 	});
 });

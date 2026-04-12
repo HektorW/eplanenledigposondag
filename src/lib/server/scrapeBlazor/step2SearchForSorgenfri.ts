@@ -42,9 +42,7 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 			(labelSelector: string, expectedText: string, expectedCount: number) => {
 				const labels = document.querySelectorAll(labelSelector);
 				if (labels.length !== expectedCount) return false;
-				const matching = Array.from(labels).filter((el) =>
-					el.textContent?.includes(expectedText)
-				);
+				const matching = Array.from(labels).filter((el) => el.textContent?.includes(expectedText));
 				return matching.length === expectedCount;
 			},
 			{ timeout: 2000 },

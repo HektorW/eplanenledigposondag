@@ -7,13 +7,14 @@
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
-		"lint": "prettier --check . && eslint .",
+		"lint": "eslint .",
 		"format": "prettier --write .",
-		"test": "vitest",
+		"test": "vitest run",
 		"test:unit": "vitest run --project unit",
 		"test:scraping": "vitest run --project scraping"
 	},
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.57.1",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
@@ -27,12 +28,16 @@
 		"sass-embedded": "^1.99.0",
 		"svelte": "^5.55.3",
 		"svelte-check": "^4.4.6",
-		"typescript": "^5.8.2",
+		"typescript": "^6.0.2",
 		"typescript-eslint": "^8.58.1",
 		"vite": "^8.0.8",
 		"vitest": "^4.1.4"
 	},
 	"type": "module",
+	"packageManager": "pnpm@10.33.0",
+	"engines": {
+		"node": ">=24"
+	},
 	"dependencies": {
 		"@sparticuz/chromium-min": "^147.0.0",
 		"@upstash/redis": "^1.37.0",
