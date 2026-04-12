@@ -1,92 +1,29 @@
 <script lang="ts">
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
-	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
-	import { symbolCodeLabel } from '$lib/weatherLabels';
+	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
+	import { buildLoadingMessageList } from '$lib/loadingMessages';
+	import type { Booking } from '$lib/types';
+	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
 	import { tick, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 
-	export let data;
+	const { data } = $props();
 
-	const nextSundayDate = new Date(data.date);
+	const middayWeather = $derived(getMiddayWeather(data.weather, new Date(data.date)));
+	const nextSundayDate = $derived(new Date(data.date));
+	const loadingMessageList = $derived(buildLoadingMessageList(middayWeather));
 
-	const weather = data.weather;
+	let freshResult: { bookings: Booking[]; scrapedAt: string } | null = $state(null);
+	let scrapeError: unknown = $state(null);
 
-	const sundayWeatherEntries =
-		weather?.properties.timeseries
-			.map((entry): ParsedWeatherTimeEntry => ({ ...entry, date: new Date(entry.time) }))
-			.filter((entry) => entry.date.getDate() === nextSundayDate.getDate()) ?? [];
+	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
+	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
+	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError);
 
-	const middayWeather = sundayWeatherEntries
-		.filter((entry) => entry.data)
-		.filter((entry) => entry.date.getHours() >= 11 && entry.date.getHours() <= 14)
-		.filter((entry) => entry.data.next_12_hours)
-		.toSorted((a, b) => a.date.getHours() - b.date.getHours())[0];
-
-	const middayWeatherSymbol =
-		(middayWeather?.data.next_12_hours ?? middayWeather?.data.next_6_hours)?.summary?.symbol_code ??
-		null;
-	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
-	const middayWeatherTemperature = middayWeather?.data.instant?.details?.air_temperature ?? null;
-
-	type LoadingMessage = string | { text: string; imageUrl: string };
-
-	function shuffleGroups(groups: LoadingMessage[][]): LoadingMessage[] {
-		const shuffled = [...groups];
-		for (let i = shuffled.length - 1; i > 0; i--) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-		}
-		return shuffled.flat();
-	}
-
-	// Messages that can appear in any order, early on
-	const anytime: LoadingMessage[][] = [
-		['Kul med fotboll ✨'],
-		['Hoppas vi blir många 🤞😮‍💨'],
-		['Vem tar med bollen? ⚽️'],
-		['Hoppas ingen bokat hela planen 🤞'],
-		['Ses på söndag? 👋']
-	];
-
-	// Messages that should come later — sequences stay together
-	const late: LoadingMessage[][] = [
-		['Tar visst lite tid 👀', 'Det är inte mitt fel 😩'],
-		['Blazor var ett misstag'],
-		['Malmö stad, skaffa ett API 🙏'],
-		['Satans blazor 😭'],
-		['Nu borde det komma något snart 🤔'],
-		['Skulle jag gissa att det kommer krascha 😬']
-	];
-
-	const loadingMessages: LoadingMessage[] = [
-		'Letar efter lediga tider...',
-		...(middayWeatherSymbol
-			? [
-					{
-						text: `Ser ut att bli ${middayWeatherLabel}`,
-						imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
-					} satisfies LoadingMessage
-				]
-			: middayWeatherLabel
-				? [`Ser ut att bli ${middayWeatherLabel}`]
-				: []),
-		...shuffleGroups(anytime),
-		...shuffleGroups(late),
-		'Nu har jag inte fler texter 🙃',
-		'Vi börjar om 🥸'
-	];
-
-	let bookings: Booking[] | null = data.bookings;
-	let scrapedAt: string | null = data.scrapedAt;
-	let refreshing = !!data.fresh;
-	let scrapeError: unknown = null;
-
-	async function applyUpdate(fresh: { bookings: Booking[]; scrapedAt: string }) {
+	async function applyFreshResult(result: { bookings: Booking[]; scrapedAt: string }) {
 		const doUpdate = async () => {
-			bookings = fresh.bookings;
-			scrapedAt = fresh.scrapedAt;
-			refreshing = false;
+			freshResult = result;
 			await tick();
 		};
 
@@ -100,34 +37,12 @@
 	onMount(() => {
 		if (data.fresh) {
 			data.fresh
-				.then((fresh: { bookings: Booking[]; scrapedAt: string }) => applyUpdate(fresh))
+				.then((result: { bookings: Booking[]; scrapedAt: string }) => applyFreshResult(result))
 				.catch((error: unknown) => {
 					scrapeError = error;
-					refreshing = false;
 				});
 		}
 	});
-
-	function formatScrapedAt(isoString: string): string {
-		const date = new Date(isoString);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffMin = Math.floor(diffMs / 60000);
-
-		if (diffMin < 1) return 'just nu';
-		if (diffMin === 1) return '1 minut sedan';
-		if (diffMin < 60) return `${diffMin} minuter sedan`;
-
-		const diffHours = Math.floor(diffMin / 60);
-		if (diffHours < 24) {
-			if (diffHours === 1) return '1 timme sedan';
-			return `${diffHours} timmar sedan`;
-		}
-
-		const diffDays = Math.floor(diffHours / 24);
-		if (diffDays === 1) return '1 dag sedan';
-		return `${diffDays} dagar sedan`;
-	}
 </script>
 
 <svelte:head>
@@ -143,46 +58,27 @@
 				month: 'long'
 			})}</time
 		>
-		{#if middayWeather}
+		{#if middayWeather.middayWeatherEntry}
 			&nbsp;|&nbsp;
 			<img
-				src="weather-icons/{middayWeatherSymbol}.png"
-				alt={middayWeatherLabel ?? middayWeatherSymbol}
+				src="weather-icons/{middayWeather.middayWeatherSymbol}.png"
+				alt={middayWeather.middayWeatherLabel ?? middayWeather.middayWeatherSymbol}
 			/>
 
-			{#if middayWeatherLabel}
-				&nbsp;<small>({middayWeatherLabel})</small>
+			{#if middayWeather.middayWeatherLabel}
+				&nbsp;<small>({middayWeather.middayWeatherLabel})</small>
 			{/if}
 
 			&nbsp;
-			<span>{middayWeatherTemperature?.toFixed(1)}°</span>
+			<span>{middayWeather.middayWeatherTemperature?.toFixed(1)}°</span>
 		{/if}
 	</p>
 
-	{#if bookings && scrapedAt}
-		<p class="freshness" role="status">
-			<button class="freshness-trigger" {...{ interestfor: 'freshness-popover' }}>
-				<span class="freshness-dot" class:refreshing></span>
-				<span class="freshness-text">
-					Hämtades {formatScrapedAt(scrapedAt)}{#if refreshing}
-						<span class="refreshing-label"> &middot; Uppdaterar...</span>{/if}
-				</span>
-			</button>
-		</p>
-		<!-- popover="hint" — cast needed until Svelte types include it (see popover-hint.d.ts) -->
-		<div id="freshness-popover" popover={'hint' as 'auto'} class="freshness-popover">
-			{new Date(scrapedAt).toLocaleString('sv-SE', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit'
-			})}
-		</div>
-		<Calendar {bookings} weatherEntries={sundayWeatherEntries} />
+	{#if bookingList && scrapedAt}
+		<FreshnessIndicator {scrapedAt} {refreshing} />
+		<Calendar bookings={bookingList} weatherEntries={middayWeather.sundayWeatherEntryList} />
 	{:else if refreshing}
-		<BigLoader messages={loadingMessages} delayMs={4000} />
+		<BigLoader messages={loadingMessageList} delayMs={4000} />
 	{:else}
 		<div>
 			<h2>Nåt gick riktigt snett 😭.</h2>
@@ -232,80 +128,6 @@
 		img {
 			height: 1em;
 			width: 1em;
-		}
-	}
-
-	.freshness {
-		margin-block: 0 1rem;
-	}
-
-	.freshness-trigger {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4em;
-		font: inherit;
-		font-size: 0.75rem;
-		color: inherit;
-		opacity: 0.6;
-		cursor: default;
-		background: none;
-		border: none;
-		padding: 0;
-	}
-
-	.freshness-dot {
-		width: 0.5em;
-		height: 0.5em;
-		border-radius: 50%;
-		flex-shrink: 0;
-		background-color: #4ade80;
-		box-shadow: 0 0 4px #4ade8080;
-
-		&.refreshing {
-			background-color: #facc15;
-			box-shadow: 0 0 4px #facc1580;
-			animation: dot-pulse 1.5s ease-in-out infinite;
-		}
-	}
-
-	.refreshing-label {
-		animation: text-pulse 1.5s ease-in-out infinite;
-	}
-
-	.freshness-popover {
-		margin: 0 0 0.35rem;
-		inset: auto;
-		position-area: top span-right;
-		position-try-fallbacks: flip-block;
-		background: var(--c--surface--raised);
-		color: var(--c--main--text);
-		border: 1px solid var(--c--grid--line);
-		border-radius: 0.375rem;
-		padding: 0.35rem 0.6rem;
-		font-size: 0.7rem;
-		white-space: nowrap;
-		box-shadow: 0 2px 8px hsl(220deg 60% 50% / 0.15);
-	}
-
-	@keyframes dot-pulse {
-		0%,
-		100% {
-			opacity: 1;
-			transform: scale(1);
-		}
-		50% {
-			opacity: 0.4;
-			transform: scale(0.75);
-		}
-	}
-
-	@keyframes text-pulse {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.4;
 		}
 	}
 </style>
