@@ -28,10 +28,3 @@ export async function withSelector<TSelector extends string, TReturn>(
 	return withElements(page.waitForSelector(selector), callback);
 }
 
-export async function with$$<Selector extends string, TReturn>(
-	page: Page,
-	selector: Selector,
-	callback: (elements: ElementHandle<NodeFor<Selector>>[]) => Promise<TReturn>
-) {
-	return withElements(page.$$(selector), callback);
-}

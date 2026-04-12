@@ -11,6 +11,8 @@ const baseUrl = 'https://malmo.rbok.se/boka-resurser';
 
 const logger = createLogger('scrapeBlazor:scrapeCalendar');
 
+const blockedResourceTypes = new Set(['image', 'font', 'media']);
+
 export async function scrapeCalendar(targetDate: Date): Promise<Booking[]> {
 	logger.info('Scraping blazor calendar...');
 	logger.debug('Target date:', targetDate.toISOString());
@@ -21,8 +23,17 @@ export async function scrapeCalendar(targetDate: Date): Promise<Booking[]> {
 			headless: true
 		},
 		async (browser, page) => {
+			await page.setRequestInterception(true);
+			page.on('request', (request) => {
+				if (blockedResourceTypes.has(request.resourceType())) {
+					request.abort();
+				} else {
+					request.continue();
+				}
+			});
+
 			logger.debug('Navigating to URL:', baseUrl);
-			await page.goto(`${baseUrl}`);
+			await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
 
 			await waitUntilPageIsLoaded(page);
 			await searchForSorgenfri(page);

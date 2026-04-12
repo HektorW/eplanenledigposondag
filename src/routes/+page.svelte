@@ -1,8 +1,10 @@
 <script lang="ts">
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
-	import type { ParsedWeatherTimeEntry } from '$lib/types';
+	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
 	import { symbolCodeLabel } from '$lib/weatherLabels';
+	import { tick, onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	export let data;
 
@@ -27,35 +29,105 @@
 	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
 	const middayWeatherTemperature = middayWeather?.data.instant?.details?.air_temperature ?? null;
 
-	const loadingMessages: Array<string | { text: string; imageUrl: string }> = [
-		'Letar efter lediga tider...'
+	type LoadingMessage = string | { text: string; imageUrl: string };
+
+	function shuffleGroups(groups: LoadingMessage[][]): LoadingMessage[] {
+		const shuffled = [...groups];
+		for (let i = shuffled.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		}
+		return shuffled.flat();
+	}
+
+	// Messages that can appear in any order, early on
+	const anytime: LoadingMessage[][] = [
+		['Kul med fotboll ✨'],
+		['Hoppas vi blir många 🤞😮‍💨'],
+		['Vem tar med bollen? ⚽️'],
+		['Hoppas ingen bokat hela planen 🤞'],
+		['Ses på söndag? 👋']
 	];
 
-	if (middayWeatherLabel) {
-		const text = `Ser ut att bli ${middayWeatherLabel}`;
+	// Messages that should come later — sequences stay together
+	const late: LoadingMessage[][] = [
+		['Tar visst lite tid 👀', 'Det är inte mitt fel 😩'],
+		['Blazor var ett misstag'],
+		['Malmö stad, skaffa ett API 🙏'],
+		['Satans blazor 😭'],
+		['Nu borde det komma något snart 🤔'],
+		['Skulle jag gissa att det kommer krascha 😬']
+	];
 
-		if (middayWeatherSymbol) {
-			loadingMessages.push({
-				text: `Ser ut att bli ${middayWeatherLabel}`,
-				imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
-			});
+	const loadingMessages: LoadingMessage[] = [
+		'Letar efter lediga tider...',
+		...(middayWeatherSymbol
+			? [
+					{
+						text: `Ser ut att bli ${middayWeatherLabel}`,
+						imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
+					} satisfies LoadingMessage
+				]
+			: middayWeatherLabel
+				? [`Ser ut att bli ${middayWeatherLabel}`]
+				: []),
+		...shuffleGroups(anytime),
+		...shuffleGroups(late),
+		'Nu har jag inte fler texter 🙃',
+		'Vi börjar om 🥸'
+	];
+
+	let bookings: Booking[] | null = data.bookings;
+	let scrapedAt: string | null = data.scrapedAt;
+	let refreshing = !!data.fresh;
+	let scrapeError: unknown = null;
+
+	async function applyUpdate(fresh: { bookings: Booking[]; scrapedAt: string }) {
+		const doUpdate = async () => {
+			bookings = fresh.bookings;
+			scrapedAt = fresh.scrapedAt;
+			refreshing = false;
+			await tick();
+		};
+
+		if (browser && document.startViewTransition) {
+			document.startViewTransition(() => doUpdate());
 		} else {
-			loadingMessages.push(text);
+			await doUpdate();
 		}
 	}
 
-	loadingMessages.push(
-		'Kul med fotboll ✨',
-		'Hoppas vi blir många 🤞😮‍💨',
-		'Tar visst lite tid 👀',
-		'Det är inte mitt fel 😩',
-		'Satans blazor 😭',
-		'Ses på söndag? 👋',
-		'Nu borde det komma något snart 🤔',
-		'Skulle jag gissa att det kommer krascha 😬',
-		'Nu har jag inte fler texter 🙃',
-		'Vi börjar om 🥸'
-	);
+	onMount(() => {
+		if (data.fresh) {
+			data.fresh
+				.then((fresh: { bookings: Booking[]; scrapedAt: string }) => applyUpdate(fresh))
+				.catch((error: unknown) => {
+					scrapeError = error;
+					refreshing = false;
+				});
+		}
+	});
+
+	function formatScrapedAt(isoString: string): string {
+		const date = new Date(isoString);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMin = Math.floor(diffMs / 60000);
+
+		if (diffMin < 1) return 'just nu';
+		if (diffMin === 1) return '1 minut sedan';
+		if (diffMin < 60) return `${diffMin} minuter sedan`;
+
+		const diffHours = Math.floor(diffMin / 60);
+		if (diffHours < 24) {
+			if (diffHours === 1) return '1 timme sedan';
+			return `${diffHours} timmar sedan`;
+		}
+
+		const diffDays = Math.floor(diffHours / 24);
+		if (diffDays === 1) return '1 dag sedan';
+		return `${diffDays} dagar sedan`;
+	}
 </script>
 
 <svelte:head>
@@ -87,17 +159,37 @@
 		{/if}
 	</p>
 
-	{#await data.calendar}
-		<BigLoader messages={loadingMessages} />
-	{:then calendar}
-		<Calendar bookings={calendar} weatherEntries={sundayWeatherEntries} />
-	{:catch error}
+	{#if bookings && scrapedAt}
+		<p class="freshness" role="status">
+			<button class="freshness-trigger" {...{ interestfor: 'freshness-popover' }}>
+				<span class="freshness-dot" class:refreshing></span>
+				<span class="freshness-text">
+					Hämtades {formatScrapedAt(scrapedAt)}{#if refreshing}
+						<span class="refreshing-label"> &middot; Uppdaterar...</span>{/if}
+				</span>
+			</button>
+		</p>
+		<!-- popover="hint" — cast needed until Svelte types include it (see popover-hint.d.ts) -->
+		<div id="freshness-popover" popover={'hint' as 'auto'} class="freshness-popover">
+			{new Date(scrapedAt).toLocaleString('sv-SE', {
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit'
+			})}
+		</div>
+		<Calendar {bookings} weatherEntries={sundayWeatherEntries} />
+	{:else if refreshing}
+		<BigLoader messages={loadingMessages} delayMs={4000} />
+	{:else}
 		<div>
 			<h2>Nåt gick riktigt snett 😭.</h2>
-
-			<p>Här är felet:</p>
-			<code><pre>{JSON.stringify(error, null, 2)}</pre></code>
-
+			{#if scrapeError}
+				<p>Här är felet:</p>
+				<code><pre>{JSON.stringify(scrapeError, Object.getOwnPropertyNames(scrapeError), 2)}</pre></code>
+			{/if}
 			<p>
 				Skriv till Hektor eller ännu bättre lägg en PR <a
 					href="https://github.com/HektorW/eplanenledigposondag"
@@ -105,7 +197,7 @@
 				>
 			</p>
 		</div>
-	{/await}
+	{/if}
 </main>
 
 <style>
@@ -134,6 +226,80 @@
 		img {
 			height: 1em;
 			width: 1em;
+		}
+	}
+
+	.freshness {
+		margin-block: 0 1rem;
+	}
+
+	.freshness-trigger {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4em;
+		font: inherit;
+		font-size: 0.75rem;
+		color: inherit;
+		opacity: 0.6;
+		cursor: default;
+		background: none;
+		border: none;
+		padding: 0;
+	}
+
+	.freshness-dot {
+		width: 0.5em;
+		height: 0.5em;
+		border-radius: 50%;
+		flex-shrink: 0;
+		background-color: #4ade80;
+		box-shadow: 0 0 4px #4ade8080;
+
+		&.refreshing {
+			background-color: #facc15;
+			box-shadow: 0 0 4px #facc1580;
+			animation: dot-pulse 1.5s ease-in-out infinite;
+		}
+	}
+
+	.refreshing-label {
+		animation: text-pulse 1.5s ease-in-out infinite;
+	}
+
+	.freshness-popover {
+		margin: 0 0 0.35rem;
+		inset: auto;
+		position-area: top span-right;
+		position-try-fallbacks: flip-block;
+		background: var(--c--surface--raised);
+		color: var(--c--main--text);
+		border: 1px solid var(--c--grid--line);
+		border-radius: 0.375rem;
+		padding: 0.35rem 0.6rem;
+		font-size: 0.7rem;
+		white-space: nowrap;
+		box-shadow: 0 2px 8px hsl(220deg 60% 50% / 0.15);
+	}
+
+	@keyframes dot-pulse {
+		0%,
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.4;
+			transform: scale(0.75);
+		}
+	}
+
+	@keyframes text-pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.4;
 		}
 	}
 </style>
