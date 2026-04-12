@@ -26,30 +26,17 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 		return searchAndClickLabels(page, retryCount + 1);
 	}
 
-	await withSelector(page, selectors.searchInput, async (searchInput) => {
-		logger.debug('Found search input');
-		assertNonNullish(searchInput, 'Search input not found');
+	// enough to only get sorgenfri hits
+	// avoids additional searches which detaches found labels
+	const searchTerm = 'sor man';
 
-		const searchInputValue = await searchInput.evaluate((el) => (el as HTMLInputElement).value);
-		logger.debug('Current search input value:', searchInputValue);
-
-		await searchInput.evaluate((el) => ((el as HTMLInputElement).value = ''));
-		logger.debug('Set search input value to empty string');
-
-		// enough to only get sorgenfri hits, avoids detched
-		// avoids additional searches which detaches found labels
-		const searchTerm = 'sor man';
-		await searchInput.type(searchTerm, { delay: 50 });
-		logger.debug('Typed search term:', searchTerm);
-		await searchInput.press('Enter');
-		logger.debug('Pressed Enter on search input');
-	});
+	await typeSearchTermAndSubmit(page, searchTerm);
+	logger.debug('Search submitted with correct value');
 
 	logger.debug('Looking for correct labels to appear...');
 
 	// Use page.waitForFunction to poll inside the browser instead of round-tripping
-	// through CDP on every poll iteration. Increased timeout from 500ms to 2000ms
-	// to avoid expensive retries that require re-typing the search.
+	// through CDP on every poll iteration.
 	const labelsReady = await attempt(() =>
 		page.waitForFunction(
 			(labelSelector: string, expectedText: string, expectedCount: number) => {
@@ -107,4 +94,64 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 	}
 
 	sorgenfriLabels.forEach((label) => label.dispose());
+}
+
+/**
+ * Types a search term into the search input and verifies Blazor accepted it.
+ * Blazor's SignalR can clobber keystrokes during typing — each keystroke triggers
+ * a server round-trip and the response can overwrite the input with stale state.
+ * This function retries the entire type-and-verify cycle until the value is correct.
+ */
+async function typeSearchTermAndSubmit(page: Page, searchTerm: string) {
+	const maxTypeAttempts = 5;
+	const baseDelay = 150;
+
+	for (let typeAttempt = 0; typeAttempt < maxTypeAttempts; typeAttempt++) {
+		const delay = baseDelay + typeAttempt * 75;
+
+		await withSelector(page, selectors.searchInput, async (searchInput) => {
+			assertNonNullish(searchInput, 'Search input not found');
+
+			const currentValue = await searchInput.evaluate((el) => (el as HTMLInputElement).value);
+			logger.debug('Search input value before typing', { currentValue, typeAttempt, delay });
+
+			// Clear via select-all + backspace so Blazor's SignalR binding sees
+			// real keyboard events, unlike .value = '' which it ignores
+			if (currentValue.length > 0) {
+				await searchInput.click({ clickCount: 3 });
+				await searchInput.press('Backspace');
+				logger.debug('Cleared search input');
+			}
+
+			await searchInput.type(searchTerm, { delay });
+			logger.debug('Typed search term:', searchTerm);
+		});
+
+		// Read back the value to verify Blazor didn't clobber it
+		const actualValue = await page.$eval(
+			selectors.searchInput,
+			(el) => (el as HTMLInputElement).value
+		);
+		logger.debug('Search input value after typing', { expected: searchTerm, actual: actualValue });
+
+		if (actualValue === searchTerm) {
+			// Value is correct — submit the search
+			await withSelector(page, selectors.searchInput, async (searchInput) => {
+				assertNonNullish(searchInput, 'Search input not found');
+				await searchInput.press('Enter');
+				logger.debug('Pressed Enter on search input');
+			});
+			return;
+		}
+
+		logger.debug('Blazor clobbered the search input, retrying type', {
+			typeAttempt,
+			expected: searchTerm,
+			actual: actualValue
+		});
+	}
+
+	throw new Error(
+		`Failed to type search term after ${maxTypeAttempts} attempts — Blazor keeps overwriting the input`
+	);
 }

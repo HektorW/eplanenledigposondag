@@ -5,25 +5,25 @@ import { createLogger } from '../logger2';
 const logger = createLogger('scrapeBlazor:getBrowser');
 
 const remoteExecutablePath =
-	'https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar';
+	'https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.x64.tar';
 
-const isLocal = process.env.NODE_ENV === 'development';
+const useSystemChrome = process.env.NODE_ENV !== 'production';
 let sharedBrowser: Browser | null = null;
 
 type BrowserOptions = Pick<LaunchOptions, 'defaultViewport' | 'headless'>;
 
 export async function getBrowser(options?: BrowserOptions) {
 	if (!sharedBrowser?.connected) {
-		logger.debug('Creating new browser instance', { isLocal });
+		logger.debug('Creating new browser instance', { useSystemChrome });
 
 		const baseArgs = ['--locale=en-US', '--accept-lang=en-US'];
 
 		sharedBrowser = await puppeteerCore.launch({
 			...options,
-			...(isLocal
+			...(useSystemChrome
 				? {
 						channel: 'chrome',
-						args: baseArgs,
+						args: [...baseArgs, '--disable-dev-shm-usage', '--no-sandbox'],
 						headless: options?.headless ?? true
 					}
 				: {
@@ -48,7 +48,7 @@ export async function disposeBrowser() {
 	// 	await page.close();
 	// }
 
-	if (isLocal) {
+	if (useSystemChrome) {
 		await sharedBrowser.close();
 	}
 }
