@@ -2,7 +2,7 @@ import { assertNonNullish } from '$lib/assert';
 import type { Page } from 'puppeteer-core';
 import { resourceAndDateRegex } from './constants';
 import { withSelector } from './withElement';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
 

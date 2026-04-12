@@ -31,7 +31,7 @@
 		</span>
 	</button>
 </p>
-<!-- popover="hint" — cast needed until Svelte types include it (see popover-hint.d.ts) -->
+<!-- popover="hint" — cast needed until Svelte types include it -->
 <div id="freshness-popover" popover={'hint' as 'auto'} class="freshness-popover">
 	{absoluteTime}
 </div>

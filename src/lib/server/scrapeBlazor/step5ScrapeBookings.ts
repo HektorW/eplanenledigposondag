@@ -2,7 +2,7 @@ import type { Booking } from '$lib/types';
 import type { Page } from 'puppeteer-core';
 import { createBookingEntry, getResourceIdFromIndex } from './createBookingEntry';
 import { resourceAndDateRegex } from './constants';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step5ScrapeBookings');
 

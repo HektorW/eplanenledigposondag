@@ -1,5 +1,5 @@
 import type { Booking } from '$lib/types';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 import { withBrowserAndPage } from './getBrowser';
 import { waitUntilPageIsLoaded } from './step1WaitUntilPageIsLoaded';
 import { searchForSorgenfri } from './step2SearchForSorgenfri';

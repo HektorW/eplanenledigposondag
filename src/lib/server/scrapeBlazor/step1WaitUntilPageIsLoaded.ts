@@ -1,6 +1,6 @@
 import type { Page } from 'puppeteer-core';
 import { assertNonNullish } from '$lib/assert';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step1WaitUntilPageIsLoaded');
 

@@ -1,6 +1,6 @@
 import puppeteerCore, { Page, type Browser, type LaunchOptions } from 'puppeteer-core';
 import chromium from '@sparticuz/chromium-min';
-import { createLogger } from '../logger2';
+import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:getBrowser');
 

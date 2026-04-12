@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	print24HourTime,
 	getNextSundayDate,
-	formattedTimeToMinutes,
-	dateStrToMinutes
+	formattedTimeToMinutes
 } from './utils';
 
 describe('print24HourTime', () => {
@@ -69,17 +68,3 @@ describe('formattedTimeToMinutes', () => {
 	});
 });
 
-describe('dateStrToMinutes', () => {
-	it('parses /Date(timestamp)/ format to minutes since midnight', () => {
-		// Create a known timestamp and verify the extraction
-		const date = new Date(2024, 7, 11, 14, 30, 0); // 14:30
-		const dateStr = `/Date(${date.getTime()})/`;
-		expect(dateStrToMinutes(dateStr)).toBe(14 * 60 + 30);
-	});
-
-	it('handles midnight timestamp', () => {
-		const date = new Date(2024, 7, 11, 0, 0, 0); // 00:00
-		const dateStr = `/Date(${date.getTime()})/`;
-		expect(dateStrToMinutes(dateStr)).toBe(0);
-	});
-});
