@@ -3,7 +3,7 @@
 	import Calendar from '$lib/components/Calendar.svelte';
 	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
 	import { symbolCodeLabel } from '$lib/weatherLabels';
-	import { invalidateAll } from '$app/navigation';
+	import { tick } from 'svelte';
 
 	export let data;
 
@@ -56,13 +56,35 @@
 		'Vi börjar om 🥸'
 	);
 
-	let refreshing = false;
+	let bookings: Booking[] | null = data.bookings;
+	let scrapedAt: string | null = data.scrapedAt;
+	let refreshing = !!data.fresh;
 
-	async function triggerRefresh() {
-		if (refreshing) return;
-		refreshing = true;
-		await invalidateAll();
-		refreshing = false;
+	async function applyUpdate(fresh: { bookings: Booking[]; scrapedAt: string }) {
+		const doUpdate = async () => {
+			bookings = fresh.bookings;
+			scrapedAt = fresh.scrapedAt;
+			refreshing = false;
+			await tick();
+		};
+
+		if (document.startViewTransition) {
+			document.startViewTransition(() => doUpdate());
+		} else {
+			await doUpdate();
+		}
+	}
+
+	if (data.fresh) {
+		data.fresh
+			.then((fresh: { bookings: Booking[]; scrapedAt: string }) => applyUpdate(fresh))
+			.catch(() => {
+				refreshing = false;
+			});
+	}
+
+	function triggerRefresh() {
+		window.location.reload();
 	}
 
 	function formatScrapedAt(isoString: string): string {
@@ -110,61 +132,35 @@
 		{/if}
 	</p>
 
-	{#if data.fresh}
-		{#await data.fresh}
-			{#if data.bookings && data.scrapedAt}
-				<p class="freshness">
-					Hämtades {formatScrapedAt(data.scrapedAt)}
-					<span class="refreshing">&middot; Uppdaterar...</span>
-				</p>
-				<Calendar bookings={data.bookings} weatherEntries={sundayWeatherEntries} />
-			{:else}
-				<BigLoader messages={loadingMessages} />
-			{/if}
-		{:then fresh}
-			<p class="freshness">
-				Hämtades {formatScrapedAt(fresh.scrapedAt)}
-				<button class="refresh-btn" onclick={triggerRefresh} disabled={refreshing}>
-					{refreshing ? 'Uppdaterar...' : 'Uppdatera'}
-				</button>
-			</p>
-			<Calendar bookings={fresh.bookings} weatherEntries={sundayWeatherEntries} />
-		{:catch}
-			{#if data.bookings && data.scrapedAt}
-				<p class="freshness">
-					Hämtades {formatScrapedAt(data.scrapedAt)}
-					<button class="refresh-btn" onclick={triggerRefresh} disabled={refreshing}>
-						{refreshing ? 'Uppdaterar...' : 'Uppdatera'}
-					</button>
-				</p>
-				<Calendar bookings={data.bookings} weatherEntries={sundayWeatherEntries} />
-			{:else}
-				<div>
-					<h2>Nåt gick riktigt snett 😭.</h2>
-					<p>
-						Skriv till Hektor eller ännu bättre lägg en PR <a
-							href="https://github.com/HektorW/eplanenledigposondag"
-							target="_blank">https://github.com/HektorW/eplanenledigposondag</a
-						>
-					</p>
-				</div>
-			{/if}
-		{/await}
-	{:else if data.bookings && data.scrapedAt}
+	{#if bookings && scrapedAt}
 		<p class="freshness">
-			Hämtades {formatScrapedAt(data.scrapedAt)}
-			<button class="refresh-btn" onclick={triggerRefresh} disabled={refreshing}>
-				{refreshing ? 'Uppdaterar...' : 'Uppdatera'}
-			</button>
+			Hämtades {formatScrapedAt(scrapedAt)}
+			{#if refreshing}
+				<span class="refreshing">&middot; Uppdaterar...</span>
+			{:else}
+				<button class="refresh-btn" onclick={triggerRefresh}>Uppdatera</button>
+			{/if}
 		</p>
-		<Calendar bookings={data.bookings} weatherEntries={sundayWeatherEntries} />
+		<Calendar {bookings} weatherEntries={sundayWeatherEntries} />
+	{:else if refreshing}
+		<BigLoader messages={loadingMessages} />
+	{:else}
+		<div>
+			<h2>Nåt gick riktigt snett 😭.</h2>
+			<p>
+				Skriv till Hektor eller ännu bättre lägg en PR <a
+					href="https://github.com/HektorW/eplanenledigposondag"
+					target="_blank">https://github.com/HektorW/eplanenledigposondag</a
+				>
+			</p>
+		</div>
 	{/if}
 </main>
 
 <style>
 	main {
 		display: grid;
-		grid-template-rows: auto auto auto 1fr;
+		grid-template-rows: auto auto 1fr;
 		margin-inline: auto;
 		max-width: 50em;
 		min-height: 100svh;
@@ -182,7 +178,7 @@
 		display: flex;
 		font-size: 1rem;
 		font-weight: 400;
-		margin-block: 0 0;
+		margin-block: 0 2rem;
 
 		img {
 			height: 1em;
@@ -193,7 +189,7 @@
 	.freshness {
 		font-size: 0.75rem;
 		opacity: 0.6;
-		margin-block: 0.25rem 1.5rem;
+		margin-block: 0 1rem;
 	}
 
 	.refreshing {
@@ -210,11 +206,6 @@
 
 		&:hover {
 			opacity: 1;
-		}
-
-		&:disabled {
-			cursor: default;
-			animation: pulse 1.5s ease-in-out infinite;
 		}
 	}
 
