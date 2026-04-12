@@ -11,7 +11,7 @@
 
 	const { bookings, weatherEntries }: CalendarProps = $props();
 
-	function onGridClick(event: MouseEvent) {}
+	function onGridClick(_event: MouseEvent) {}
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->

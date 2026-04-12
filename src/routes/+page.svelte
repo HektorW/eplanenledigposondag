@@ -188,7 +188,13 @@
 			<h2>Nåt gick riktigt snett 😭.</h2>
 			{#if scrapeError}
 				<p>Här är felet:</p>
-				<code><pre>{JSON.stringify(scrapeError, Object.getOwnPropertyNames(scrapeError), 2)}</pre></code>
+				<code
+					><pre>{JSON.stringify(
+							scrapeError,
+							Object.getOwnPropertyNames(scrapeError),
+							2
+						)}</pre></code
+				>
 			{/if}
 			<p>
 				Skriv till Hektor eller ännu bättre lägg en PR <a

@@ -11,7 +11,7 @@
 	const startHour = 9;
 </script>
 
-{#each { length: hours } as _, index}
+{#each { length: hours } as _, index (index)}
 	{@const hour = startHour + index}
 	{@const weatherEntry = weatherEntries.find((entry) => entry.date.getHours() === hour)}
 
