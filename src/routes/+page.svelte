@@ -94,8 +94,14 @@
 		if (diffMin < 60) return `${diffMin} minuter sedan`;
 
 		const diffHours = Math.floor(diffMin / 60);
-		if (diffHours === 1) return '1 timme sedan';
-		return `${diffHours} timmar sedan`;
+		if (diffHours < 24) {
+			if (diffHours === 1) return '1 timme sedan';
+			return `${diffHours} timmar sedan`;
+		}
+
+		const diffDays = Math.floor(diffHours / 24);
+		if (diffDays === 1) return '1 dag sedan';
+		return `${diffDays} dagar sedan`;
 	}
 </script>
 
