@@ -28,10 +28,12 @@ const lateGroupList: LoadingMessage[][] = [
 	['Skulle jag gissa att det kommer krascha 😬']
 ];
 
-export function buildLoadingMessageList(weather: {
-	middayWeatherSymbol: string | null;
-	middayWeatherLabel: string | null;
-} | null): LoadingMessage[] {
+export function buildLoadingMessageList(
+	weather: {
+		middayWeatherSymbol: string | null;
+		middayWeatherLabel: string | null;
+	} | null
+): LoadingMessage[] {
 	const weatherMessageList: LoadingMessage[] = weather?.middayWeatherSymbol
 		? [
 				{
