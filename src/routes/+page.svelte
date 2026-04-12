@@ -28,33 +28,53 @@
 	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
 	const middayWeatherTemperature = middayWeather?.data.instant?.details?.air_temperature ?? null;
 
-	const loadingMessages: Array<string | { text: string; imageUrl: string }> = [
-		'Letar efter lediga tider...'
-	];
+	type LoadingMessage = string | { text: string; imageUrl: string };
 
-	if (middayWeatherLabel) {
-		if (middayWeatherSymbol) {
-			loadingMessages.push({
-				text: `Ser ut att bli ${middayWeatherLabel}`,
-				imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
-			});
-		} else {
-			loadingMessages.push(`Ser ut att bli ${middayWeatherLabel}`);
+	function shuffleGroups(groups: LoadingMessage[][]): LoadingMessage[] {
+		const shuffled = [...groups];
+		for (let i = shuffled.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
 		}
+		return shuffled.flat();
 	}
 
-	loadingMessages.push(
-		'Kul med fotboll ✨',
-		'Hoppas vi blir många 🤞😮‍💨',
-		'Tar visst lite tid 👀',
-		'Det är inte mitt fel 😩',
-		'Satans blazor 😭',
-		'Ses på söndag? 👋',
-		'Nu borde det komma något snart 🤔',
-		'Skulle jag gissa att det kommer krascha 😬',
+	// Messages that can appear in any order, early on
+	const anytime: LoadingMessage[][] = [
+		['Kul med fotboll ✨'],
+		['Hoppas vi blir många 🤞😮‍💨'],
+		['Vem tar med bollen? ⚽️'],
+		['Hoppas ingen bokat hela planen 🤞'],
+		['Ses på söndag? 👋'],
+		['Blazor var ett misstag'],
+		['Malmö stad, skaffa ett API 🙏']
+	];
+
+	// Messages that should come later — sequences stay together
+	const late: LoadingMessage[][] = [
+		['Tar visst lite tid 👀', 'Det är inte mitt fel 😩'],
+		['Satans blazor 😭'],
+		['Nu borde det komma något snart 🤔'],
+		['Skulle jag gissa att det kommer krascha 😬']
+	];
+
+	const loadingMessages: LoadingMessage[] = [
+		'Letar efter lediga tider...',
+		...(middayWeatherSymbol
+			? [
+					{
+						text: `Ser ut att bli ${middayWeatherLabel}`,
+						imageUrl: `/weather-icons/${middayWeatherSymbol}.png`
+					} satisfies LoadingMessage
+				]
+			: middayWeatherLabel
+				? [`Ser ut att bli ${middayWeatherLabel}`]
+				: []),
+		...shuffleGroups(anytime),
+		...shuffleGroups(late),
 		'Nu har jag inte fler texter 🙃',
 		'Vi börjar om 🥸'
-	);
+	];
 
 	let bookings: Booking[] | null = data.bookings;
 	let scrapedAt: string | null = data.scrapedAt;
@@ -142,7 +162,7 @@
 		</p>
 		<Calendar {bookings} weatherEntries={sundayWeatherEntries} />
 	{:else if refreshing}
-		<BigLoader messages={loadingMessages} />
+		<BigLoader messages={loadingMessages} delayMs={4000} />
 	{:else}
 		<div>
 			<h2>Nåt gick riktigt snett 😭.</h2>
