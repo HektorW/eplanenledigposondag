@@ -83,10 +83,6 @@
 			});
 	}
 
-	function triggerRefresh() {
-		window.location.reload();
-	}
-
 	function formatScrapedAt(isoString: string): string {
 		const date = new Date(isoString);
 		const now = new Date();
@@ -134,12 +130,9 @@
 
 	{#if bookings && scrapedAt}
 		<p class="freshness">
-			Hämtades {formatScrapedAt(scrapedAt)}
-			{#if refreshing}
-				<span class="refreshing">&middot; Uppdaterar...</span>
-			{:else}
-				<button class="refresh-btn" onclick={triggerRefresh}>Uppdatera</button>
-			{/if}
+			Hämtades {formatScrapedAt(scrapedAt)}{#if refreshing}<span class="refreshing">
+					&middot; Uppdaterar...</span
+				>{/if}
 		</p>
 		<Calendar {bookings} weatherEntries={sundayWeatherEntries} />
 	{:else if refreshing}
@@ -194,19 +187,6 @@
 
 	.refreshing {
 		animation: pulse 1.5s ease-in-out infinite;
-	}
-
-	.refresh-btn {
-		all: unset;
-		cursor: pointer;
-		margin-left: 0.5em;
-		text-decoration: underline;
-		text-decoration-style: dotted;
-		text-underline-offset: 2px;
-
-		&:hover {
-			opacity: 1;
-		}
 	}
 
 	@keyframes pulse {
