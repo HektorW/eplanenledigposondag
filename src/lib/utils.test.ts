@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { print24HourTime, getNextSundayDate, parseTargetDate, formattedTimeToMinutes } from './utils';
+import {
+	print24HourTime,
+	getNextSundayDate,
+	parseTargetDate,
+	formattedTimeToMinutes
+} from './utils';
 
 describe('print24HourTime', () => {
 	it('formats 0 minutes as 0:00', () => {
