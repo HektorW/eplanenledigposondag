@@ -2,7 +2,7 @@ import type { ParsedWeatherTimeEntry, WeatherResponseData } from '$lib/types';
 import { symbolCodeLabel } from '$lib/weatherLabels';
 
 export type MiddayWeather = {
-	sundayWeatherEntryList: ParsedWeatherTimeEntry[];
+	targetDateWeatherEntryList: ParsedWeatherTimeEntry[];
 	middayWeatherSymbol: string | null;
 	middayWeatherLabel: string | null;
 	middayWeatherTemperature: number | null;
@@ -13,12 +13,12 @@ export function getMiddayWeather(
 	weather: WeatherResponseData | null,
 	targetDate: Date
 ): MiddayWeather {
-	const sundayWeatherEntryList =
+	const targetDateWeatherEntryList =
 		weather?.properties.timeseries
 			.map((entry): ParsedWeatherTimeEntry => ({ ...entry, date: new Date(entry.time) }))
 			.filter((entry) => entry.date.getDate() === targetDate.getDate()) ?? [];
 
-	const middayWeatherEntry = sundayWeatherEntryList
+	const middayWeatherEntry = targetDateWeatherEntryList
 		.filter((entry) => entry.data)
 		.filter((entry) => entry.date.getHours() >= 11 && entry.date.getHours() <= 14)
 		.filter((entry) => entry.data.next_12_hours)
@@ -32,7 +32,7 @@ export function getMiddayWeather(
 		middayWeatherEntry?.data.instant?.details?.air_temperature ?? null;
 
 	return {
-		sundayWeatherEntryList,
+		targetDateWeatherEntryList,
 		middayWeatherSymbol,
 		middayWeatherLabel,
 		middayWeatherTemperature,
