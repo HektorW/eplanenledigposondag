@@ -13,9 +13,10 @@ export async function selectTargetDate(page: Page, targetDate: Date, retryCount 
 
 	const month = targetDate.getMonth() + 1;
 	const day = targetDate.getDate();
+	const dayAbbreviation = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
 
 	const prefix = (n: number) => (n < 10 ? '0' + n : n);
-	const targetDateStr = `Sun ${prefix(day)}/${prefix(month)}`;
+	const targetDateStr = `${dayAbbreviation} ${prefix(day)}/${prefix(month)}`;
 
 	const elementText = await withSelector(page, '.k-link.k-nav-day', async (element) => {
 		assertNonNullish(element, 'Date element not found');
