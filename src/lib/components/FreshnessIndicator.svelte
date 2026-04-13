@@ -71,6 +71,8 @@
 	}
 
 	.refreshing-label {
+		margin-inline-start: 0.25em;
+		font-size: 0.85em;
 		animation: text-pulse 1.5s ease-in-out infinite;
 	}
 
