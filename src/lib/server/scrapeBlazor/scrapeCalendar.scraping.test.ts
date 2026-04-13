@@ -5,26 +5,39 @@ import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 
 const validResourceIds = [fullCourtId, halfCourtAId, halfCourtBId];
 
+function expectValidBookingList(result: Awaited<ReturnType<typeof scrapeCalendar>>) {
+	expect(result).toBeInstanceOf(Array);
+
+	for (const booking of result) {
+		expect(booking).toHaveProperty('bookingId');
+		expect(booking).toHaveProperty('resourceId');
+		expect(booking).toHaveProperty('startTimeFormatted');
+		expect(booking).toHaveProperty('endTimeFormatted');
+		expect(booking).toHaveProperty('bookedBy');
+
+		expect(typeof booking.bookingId).toBe('string');
+		expect(validResourceIds).toContain(booking.resourceId);
+		expect(booking.startTimeFormatted).toMatch(/^\d{1,2}:\d{2}$/);
+		expect(booking.endTimeFormatted).toMatch(/^\d{1,2}:\d{2}$/);
+		expect(typeof booking.bookedBy).toBe('string');
+		expect(booking.bookedBy.length).toBeGreaterThan(0);
+	}
+}
+
 describe('scrapeCalendar', () => {
-	it('completes the scraping flow and returns a valid result', async () => {
+	it('scrapes next Sunday', async () => {
 		const targetDate = getNextSundayDate();
 		const result = await scrapeCalendar(targetDate);
+		expectValidBookingList(result);
+	});
 
-		expect(result).toBeInstanceOf(Array);
+	it('scrapes a non-Sunday date', async () => {
+		const tomorrow = new Date();
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		// Skip if tomorrow is Sunday — already covered above
+		if (tomorrow.getDay() === 0) return;
 
-		for (const booking of result) {
-			expect(booking).toHaveProperty('bookingId');
-			expect(booking).toHaveProperty('resourceId');
-			expect(booking).toHaveProperty('startTimeFormatted');
-			expect(booking).toHaveProperty('endTimeFormatted');
-			expect(booking).toHaveProperty('bookedBy');
-
-			expect(typeof booking.bookingId).toBe('string');
-			expect(validResourceIds).toContain(booking.resourceId);
-			expect(booking.startTimeFormatted).toMatch(/^\d{1,2}:\d{2}$/);
-			expect(booking.endTimeFormatted).toMatch(/^\d{1,2}:\d{2}$/);
-			expect(typeof booking.bookedBy).toBe('string');
-			expect(booking.bookedBy.length).toBeGreaterThan(0);
-		}
+		const result = await scrapeCalendar(tomorrow);
+		expectValidBookingList(result);
 	});
 });

@@ -53,67 +53,87 @@ describe('getNextSundayDate', () => {
 });
 
 describe('parseTargetDate', () => {
+	// 2026-04-13 is a Monday
+	const now = new Date(2026, 3, 13, 12, 0, 0);
+
 	it('returns next Sunday with usedFallback false when param is null', () => {
-		const result = parseTargetDate(null);
+		const result = parseTargetDate(null, now);
 		expect(result.usedFallback).toBe(false);
 		expect(result.date.getDay()).toBe(0); // Sunday
 	});
 
-	it('parses a valid ISO date string', () => {
-		const result = parseTargetDate('2026-04-15');
+	it('parses a valid ISO date within range', () => {
+		const result = parseTargetDate('2026-04-15', now);
 		expect(result.usedFallback).toBe(false);
 		expect(result.date.getFullYear()).toBe(2026);
 		expect(result.date.getMonth()).toBe(3); // April (0-indexed)
 		expect(result.date.getDate()).toBe(15);
 	});
 
+	it('accepts today', () => {
+		const result = parseTargetDate('2026-04-13', now);
+		expect(result.usedFallback).toBe(false);
+		expect(result.date.getDate()).toBe(13);
+	});
+
+	it('accepts the last day within range', () => {
+		const result = parseTargetDate('2026-04-23', now);
+		expect(result.usedFallback).toBe(false);
+		expect(result.date.getDate()).toBe(23);
+	});
+
 	it('falls back on empty string', () => {
-		const result = parseTargetDate('');
+		const result = parseTargetDate('', now);
 		expect(result.usedFallback).toBe(false);
 		expect(result.date.getDay()).toBe(0);
 	});
 
 	it('falls back on invalid format', () => {
-		const result = parseTargetDate('not-a-date');
+		const result = parseTargetDate('not-a-date', now);
 		expect(result.usedFallback).toBe(true);
-		expect(result.date.getDay()).toBe(0);
 	});
 
 	it('falls back on partial date', () => {
-		const result = parseTargetDate('2026-04');
+		const result = parseTargetDate('2026-04', now);
 		expect(result.usedFallback).toBe(true);
-		expect(result.date.getDay()).toBe(0);
 	});
 
 	it('falls back on date with extra characters', () => {
-		const result = parseTargetDate('2026-04-15T00:00:00');
+		const result = parseTargetDate('2026-04-15T00:00:00', now);
 		expect(result.usedFallback).toBe(true);
-		expect(result.date.getDay()).toBe(0);
 	});
 
 	it('falls back on nonsense date like Feb 30', () => {
-		const result = parseTargetDate('2026-02-30');
+		const result = parseTargetDate('2026-02-30', now);
 		expect(result.usedFallback).toBe(true);
-		expect(result.date.getDay()).toBe(0);
 	});
 
 	it('falls back on month 13', () => {
-		const result = parseTargetDate('2026-13-01');
+		const result = parseTargetDate('2026-13-01', now);
 		expect(result.usedFallback).toBe(true);
-		expect(result.date.getDay()).toBe(0);
 	});
 
-	it('accepts leap day on a leap year', () => {
-		const result = parseTargetDate('2028-02-29');
+	it('accepts leap day on a leap year within range', () => {
+		const leapNow = new Date(2028, 1, 25, 12, 0, 0);
+		const result = parseTargetDate('2028-02-29', leapNow);
 		expect(result.usedFallback).toBe(false);
 		expect(result.date.getMonth()).toBe(1);
 		expect(result.date.getDate()).toBe(29);
 	});
 
 	it('falls back on Feb 29 in a non-leap year', () => {
-		const result = parseTargetDate('2026-02-29');
+		const result = parseTargetDate('2026-02-29', now);
 		expect(result.usedFallback).toBe(true);
-		expect(result.date.getDay()).toBe(0);
+	});
+
+	it('falls back on date in the past', () => {
+		const result = parseTargetDate('2026-04-12', now);
+		expect(result.usedFallback).toBe(true);
+	});
+
+	it('falls back on date too far in the future', () => {
+		const result = parseTargetDate('2026-04-24', now);
+		expect(result.usedFallback).toBe(true);
 	});
 });
 

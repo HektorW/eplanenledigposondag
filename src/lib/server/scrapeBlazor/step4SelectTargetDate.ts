@@ -1,4 +1,5 @@
 import { assertNonNullish } from '$lib/assert';
+import { MAX_FUTURE_DAYS } from '$lib/utils';
 import type { Page } from 'puppeteer-core';
 import { resourceAndDateRegex } from './constants';
 import { withSelector } from './withElement';
@@ -7,7 +8,7 @@ import { createLogger } from '../logger';
 const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
 
 export async function selectTargetDate(page: Page, targetDate: Date, retryCount = 0) {
-	if (retryCount > 10) {
+	if (retryCount > MAX_FUTURE_DAYS) {
 		throw new Error('Max retries reached while selecting target date');
 	}
 

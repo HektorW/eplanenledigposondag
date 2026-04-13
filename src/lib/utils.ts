@@ -1,5 +1,12 @@
 const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Max days into the future that the scraper can navigate to.
+ * Coupled to the retry limit in step4SelectTargetDate — the scraper
+ * clicks "Next" one day at a time, so it can't reach further than this.
+ */
+export const MAX_FUTURE_DAYS = 10;
+
 export type ParseTargetDateResult = {
 	date: Date;
 	usedFallback: boolean;
@@ -8,19 +15,20 @@ export type ParseTargetDateResult = {
 /**
  * Parses a date query parameter string into a Date.
  * Returns the default (next Sunday) if the param is missing or invalid.
+ * Rejects dates in the past or more than MAX_FUTURE_DAYS from today.
  */
-export function parseTargetDate(dateParam: string | null): ParseTargetDateResult {
+export function parseTargetDate(dateParam: string | null, now = new Date()): ParseTargetDateResult {
 	if (!dateParam) {
-		return { date: getNextSundayDate(), usedFallback: false };
+		return { date: getNextSundayDate(now), usedFallback: false };
 	}
 
 	if (!isoDateRegex.test(dateParam)) {
-		return { date: getNextSundayDate(), usedFallback: true };
+		return { date: getNextSundayDate(now), usedFallback: true };
 	}
 
 	const parsed = new Date(dateParam + 'T00:00:00');
 	if (isNaN(parsed.getTime())) {
-		return { date: getNextSundayDate(), usedFallback: true };
+		return { date: getNextSundayDate(now), usedFallback: true };
 	}
 
 	// Round-trip check: ensure the parsed date matches the input
@@ -29,7 +37,15 @@ export function parseTargetDate(dateParam: string | null): ParseTargetDateResult
 	const month = String(parsed.getMonth() + 1).padStart(2, '0');
 	const day = String(parsed.getDate()).padStart(2, '0');
 	if (`${year}-${month}-${day}` !== dateParam) {
-		return { date: getNextSundayDate(), usedFallback: true };
+		return { date: getNextSundayDate(now), usedFallback: true };
+	}
+
+	const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const maxDate = new Date(todayStart);
+	maxDate.setDate(maxDate.getDate() + MAX_FUTURE_DAYS);
+
+	if (parsed < todayStart || parsed > maxDate) {
+		return { date: getNextSundayDate(now), usedFallback: true };
 	}
 
 	return { date: parsed, usedFallback: false };
