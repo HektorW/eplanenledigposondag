@@ -11,7 +11,7 @@
 	const { data } = $props();
 
 	const middayWeather = $derived(getMiddayWeather(data.weather, new Date(data.date)));
-	const nextSundayDate = $derived(new Date(data.date));
+	const targetDate = $derived(new Date(data.date));
 	const loadingMessageList = $derived(buildLoadingMessageList(middayWeather));
 
 	let freshResult: { bookings: Booking[]; scrapedAt: string } | null = $state(null);
@@ -52,8 +52,8 @@
 <main>
 	<h1 class="title">Söndagsboll ⚽️</h1>
 	<p class="meta">
-		<time datetime={nextSundayDate.toDateString()}
-			>{nextSundayDate.toLocaleDateString('sv-SE', {
+		<time datetime={targetDate.toDateString()}
+			>{targetDate.toLocaleDateString('sv-SE', {
 				day: 'numeric',
 				month: 'long'
 			})}</time
@@ -76,7 +76,7 @@
 
 	{#if bookingList && scrapedAt}
 		<FreshnessIndicator {scrapedAt} {refreshing} />
-		<Calendar bookings={bookingList} weatherEntries={middayWeather.sundayWeatherEntryList} />
+		<Calendar bookings={bookingList} weatherEntries={middayWeather.targetDateWeatherEntryList} />
 	{:else if refreshing}
 		<BigLoader messages={loadingMessageList} delayMs={4000} />
 	{:else}

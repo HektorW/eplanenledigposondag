@@ -1,4 +1,5 @@
 import { assertNonNullish } from '$lib/assert';
+import { MAX_FUTURE_DAYS } from '$lib/utils';
 import type { Page } from 'puppeteer-core';
 import { resourceAndDateRegex } from './constants';
 import { withSelector } from './withElement';
@@ -7,15 +8,16 @@ import { createLogger } from '../logger';
 const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
 
 export async function selectTargetDate(page: Page, targetDate: Date, retryCount = 0) {
-	if (retryCount > 10) {
+	if (retryCount > MAX_FUTURE_DAYS) {
 		throw new Error('Max retries reached while selecting target date');
 	}
 
 	const month = targetDate.getMonth() + 1;
 	const day = targetDate.getDate();
+	const dayAbbreviation = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
 
 	const prefix = (n: number) => (n < 10 ? '0' + n : n);
-	const targetDateStr = `Sun ${prefix(day)}/${prefix(month)}`;
+	const targetDateStr = `${dayAbbreviation} ${prefix(day)}/${prefix(month)}`;
 
 	const elementText = await withSelector(page, '.k-link.k-nav-day', async (element) => {
 		assertNonNullish(element, 'Date element not found');
