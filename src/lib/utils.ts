@@ -80,7 +80,7 @@ export function getNextSundayDate(fromDate = new Date()) {
 
 export function formattedTimeToMinutes(time: string): number {
 	const [hours, minutes] = time.split(':').map(Number);
-	return hours * 60 + minutes;
+	return Math.round(hours * 60 + minutes);
 }
 
 export function formatScrapedAt(isoString: string): string {
