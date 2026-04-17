@@ -1,6 +1,7 @@
 <script lang="ts">
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
+	import DateStepper from '$lib/components/DateStepper.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
 	import type { Booking } from '$lib/types';
@@ -52,12 +53,7 @@
 <main>
 	<h1 class="title">Söndagsboll ⚽️</h1>
 	<p class="meta">
-		<time datetime={targetDate.toDateString()}
-			>{targetDate.toLocaleDateString('sv-SE', {
-				day: 'numeric',
-				month: 'long'
-			})}</time
-		>
+		<DateStepper date={targetDate} />
 		{#if middayWeather.middayWeatherEntry}
 			&nbsp;|&nbsp;
 			<img
