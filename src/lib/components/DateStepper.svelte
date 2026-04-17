@@ -27,7 +27,7 @@
 	);
 </script>
 
-<span class="stepper">
+<span class="stepper" data-sveltekit-preload-data="hover">
 	{#if canGoPrev}
 		<a
 			class="step"
@@ -78,6 +78,12 @@
 	a.step:hover,
 	a.step:focus-visible {
 		opacity: 1;
+	}
+
+	a.step:active {
+		opacity: 1;
+		background-color: var(--c--surface--raised);
+		transform: scale(0.94);
 	}
 
 	.step--disabled {

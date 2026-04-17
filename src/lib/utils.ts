@@ -61,12 +61,9 @@ export function parseTargetDate(dateParam: string | null, now = new Date()): Par
 }
 
 export function print24HourTime(minutes: number): string {
-	const decimal = minutes / 60;
-
-	const formattedHours = Math.floor(decimal);
-	const formattedMinutes = (decimal - formattedHours) * 60;
-
-	return `${formattedHours}:${formattedMinutes === 0 ? '00' : formattedMinutes}`;
+	const hours = Math.floor(minutes / 60);
+	const mins = Math.round(minutes) % 60;
+	return `${hours}:${String(mins).padStart(2, '0')}`;
 }
 
 export function getNextSundayDate(fromDate = new Date()) {
