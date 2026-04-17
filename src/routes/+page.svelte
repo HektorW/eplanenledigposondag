@@ -50,16 +50,25 @@
 		if (!pending) return;
 
 		const signal = { cancelled: false };
+		const FRESH_TIMEOUT_MS = 45_000;
+		const timeoutId = setTimeout(() => {
+			if (signal.cancelled) return;
+			scrapeError = new Error('Hämtningen tog för lång tid. Pröva att ladda om sidan.');
+		}, FRESH_TIMEOUT_MS);
+
 		pending
-			.then((result: { bookings: Booking[]; scrapedAt: string }) =>
-				applyFreshResult(result, signal)
-			)
+			.then((result: { bookings: Booking[]; scrapedAt: string }) => {
+				clearTimeout(timeoutId);
+				applyFreshResult(result, signal);
+			})
 			.catch((error: unknown) => {
+				clearTimeout(timeoutId);
 				if (!signal.cancelled) scrapeError = error;
 			});
 
 		return () => {
 			signal.cancelled = true;
+			clearTimeout(timeoutId);
 		};
 	});
 </script>

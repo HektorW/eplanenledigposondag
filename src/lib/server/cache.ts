@@ -79,9 +79,13 @@ async function writeCache(targetDate: Date, entry: CacheEntry): Promise<void> {
 
 const inFlightScrapes = new Map<string, Promise<CacheEntry>>();
 
+const SCRAPE_TIMEOUT_MS = 40_000;
+
 /**
  * Scrapes and persists results. Concurrent callers for the same date
  * share one in-flight scrape instead of each launching their own Puppeteer run.
+ * If a scrape hangs past SCRAPE_TIMEOUT_MS the promise rejects so the map entry
+ * clears and subsequent requests aren't stuck behind a dead scrape.
  */
 function scrapeAndCache(targetDate: Date): Promise<CacheEntry> {
 	const key = cacheKey(targetDate);
@@ -93,13 +97,19 @@ function scrapeAndCache(targetDate: Date): Promise<CacheEntry> {
 	}
 
 	logger.info('Scraping for cache...');
-	const promise = (async () => {
+	const scrape = (async () => {
 		const bookings = await scrapeCalendar(targetDate);
 		const entry: CacheEntry = { bookings, scrapedAt: new Date().toISOString() };
 		await writeCache(targetDate, entry);
 		logger.info('Scrape complete, cached', { count: bookings.length });
 		return entry;
-	})().finally(() => {
+	})();
+
+	const timeout = new Promise<CacheEntry>((_, reject) => {
+		setTimeout(() => reject(new Error(`Scrape timed out after ${SCRAPE_TIMEOUT_MS}ms`)), SCRAPE_TIMEOUT_MS);
+	});
+
+	const promise = Promise.race([scrape, timeout]).finally(() => {
 		inFlightScrapes.delete(key);
 	});
 
