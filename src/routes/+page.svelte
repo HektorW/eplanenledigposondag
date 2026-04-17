@@ -22,8 +22,14 @@
 	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError);
 
-	async function applyFreshResult(result: { bookings: Booking[]; scrapedAt: string }) {
+	async function applyFreshResult(
+		result: { bookings: Booking[]; scrapedAt: string },
+		signal: { cancelled: boolean }
+	) {
+		if (signal.cancelled) return;
+
 		const doUpdate = async () => {
+			if (signal.cancelled) return;
 			freshResult = result;
 			await tick();
 		};
@@ -43,17 +49,17 @@
 
 		if (!pending) return;
 
-		let cancelled = false;
+		const signal = { cancelled: false };
 		pending
-			.then((result: { bookings: Booking[]; scrapedAt: string }) => {
-				if (!cancelled) applyFreshResult(result);
-			})
+			.then((result: { bookings: Booking[]; scrapedAt: string }) =>
+				applyFreshResult(result, signal)
+			)
 			.catch((error: unknown) => {
-				if (!cancelled) scrapeError = error;
+				if (!signal.cancelled) scrapeError = error;
 			});
 
 		return () => {
-			cancelled = true;
+			signal.cancelled = true;
 		};
 	});
 </script>
