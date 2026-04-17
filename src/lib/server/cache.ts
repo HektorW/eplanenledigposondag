@@ -77,18 +77,34 @@ async function writeCache(targetDate: Date, entry: CacheEntry): Promise<void> {
 	logger.debug('Wrote in-memory cache', { key });
 }
 
+const inFlightScrapes = new Map<string, Promise<CacheEntry>>();
+
 /**
- * Scrapes and persists results. Returns the fresh data.
+ * Scrapes and persists results. Concurrent callers for the same date
+ * share one in-flight scrape instead of each launching their own Puppeteer run.
  */
-async function scrapeAndCache(
-	targetDate: Date
-): Promise<{ bookings: Booking[]; scrapedAt: string }> {
+function scrapeAndCache(targetDate: Date): Promise<CacheEntry> {
+	const key = cacheKey(targetDate);
+
+	const existing = inFlightScrapes.get(key);
+	if (existing) {
+		logger.debug('Joining in-flight scrape', { key });
+		return existing;
+	}
+
 	logger.info('Scraping for cache...');
-	const bookings = await scrapeCalendar(targetDate);
-	const entry: CacheEntry = { bookings, scrapedAt: new Date().toISOString() };
-	await writeCache(targetDate, entry);
-	logger.info('Scrape complete, cached', { count: bookings.length });
-	return entry;
+	const promise = (async () => {
+		const bookings = await scrapeCalendar(targetDate);
+		const entry: CacheEntry = { bookings, scrapedAt: new Date().toISOString() };
+		await writeCache(targetDate, entry);
+		logger.info('Scrape complete, cached', { count: bookings.length });
+		return entry;
+	})().finally(() => {
+		inFlightScrapes.delete(key);
+	});
+
+	inFlightScrapes.set(key, promise);
+	return promise;
 }
 
 /**
