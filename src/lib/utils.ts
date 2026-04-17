@@ -1,3 +1,5 @@
+import { Temporal } from '@js-temporal/polyfill';
+
 const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
@@ -11,6 +13,18 @@ export type ParseTargetDateResult = {
 	date: Date;
 	usedFallback: boolean;
 };
+
+export function dateToPlainDate(date: Date): Temporal.PlainDate {
+	return Temporal.PlainDate.from({
+		year: date.getFullYear(),
+		month: date.getMonth() + 1,
+		day: date.getDate()
+	});
+}
+
+export function plainDateToDate(plainDate: Temporal.PlainDate): Date {
+	return new Date(plainDate.year, plainDate.month - 1, plainDate.day);
+}
 
 /**
  * Parses a date query parameter string into a Date.
@@ -26,36 +40,24 @@ export function parseTargetDate(dateParam: string | null, now = new Date()): Par
 		return { date: getNextSundayDate(now), usedFallback: true };
 	}
 
-	const parsed = new Date(dateParam + 'T00:00:00');
-	if (isNaN(parsed.getTime())) {
+	let plainDate: Temporal.PlainDate;
+	try {
+		plainDate = Temporal.PlainDate.from(dateParam, { overflow: 'reject' });
+	} catch {
 		return { date: getNextSundayDate(now), usedFallback: true };
 	}
 
-	// Round-trip check: ensure the parsed date matches the input
-	// Catches nonsense like 2026-02-30 which JS silently rolls to March
-	const year = String(parsed.getFullYear()).padStart(4, '0');
-	const month = String(parsed.getMonth() + 1).padStart(2, '0');
-	const day = String(parsed.getDate()).padStart(2, '0');
-	if (`${year}-${month}-${day}` !== dateParam) {
+	const today = dateToPlainDate(now);
+	const maxDate = today.add({ days: MAX_FUTURE_DAYS });
+
+	if (
+		Temporal.PlainDate.compare(plainDate, today) < 0 ||
+		Temporal.PlainDate.compare(plainDate, maxDate) > 0
+	) {
 		return { date: getNextSundayDate(now), usedFallback: true };
 	}
 
-	const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const maxDate = new Date(todayStart);
-	maxDate.setDate(maxDate.getDate() + MAX_FUTURE_DAYS);
-
-	if (parsed < todayStart || parsed > maxDate) {
-		return { date: getNextSundayDate(now), usedFallback: true };
-	}
-
-	return { date: parsed, usedFallback: false };
-}
-
-export function formatIsoDate(date: Date): string {
-	const year = String(date.getFullYear()).padStart(4, '0');
-	const month = String(date.getMonth() + 1).padStart(2, '0');
-	const day = String(date.getDate()).padStart(2, '0');
-	return `${year}-${month}-${day}`;
+	return { date: plainDateToDate(plainDate), usedFallback: false };
 }
 
 export function print24HourTime(minutes: number): string {

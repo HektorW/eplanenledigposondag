@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { MAX_FUTURE_DAYS, formatIsoDate } from '$lib/utils';
+	import { resolve } from '$app/paths';
+	import { Temporal } from '@js-temporal/polyfill';
+	import { MAX_FUTURE_DAYS, dateToPlainDate } from '$lib/utils';
 
 	type DateStepperProps = {
 		date: Date;
@@ -7,34 +9,15 @@
 
 	const { date }: DateStepperProps = $props();
 
-	const today = $derived.by(() => {
-		const now = new Date();
-		return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	});
+	const plainDate = $derived(dateToPlainDate(date));
+	const today = $derived(Temporal.Now.plainDateISO());
+	const maxDate = $derived(today.add({ days: MAX_FUTURE_DAYS }));
 
-	const maxDate = $derived.by(() => {
-		const d = new Date(today);
-		d.setDate(d.getDate() + MAX_FUTURE_DAYS);
-		return d;
-	});
+	const prevDate = $derived(plainDate.subtract({ days: 1 }));
+	const nextDate = $derived(plainDate.add({ days: 1 }));
 
-	const prevDate = $derived.by(() => {
-		const d = new Date(date);
-		d.setDate(d.getDate() - 1);
-		return d;
-	});
-
-	const nextDate = $derived.by(() => {
-		const d = new Date(date);
-		d.setDate(d.getDate() + 1);
-		return d;
-	});
-
-	const canGoPrev = $derived(prevDate >= today);
-	const canGoNext = $derived(nextDate <= maxDate);
-
-	const prevHref = $derived(`?date=${formatIsoDate(prevDate)}`);
-	const nextHref = $derived(`?date=${formatIsoDate(nextDate)}`);
+	const canGoPrev = $derived(Temporal.PlainDate.compare(prevDate, today) >= 0);
+	const canGoNext = $derived(Temporal.PlainDate.compare(nextDate, maxDate) <= 0);
 
 	const formatted = $derived(
 		date.toLocaleDateString('sv-SE', {
@@ -46,15 +29,25 @@
 
 <span class="stepper">
 	{#if canGoPrev}
-		<a class="step" href={prevHref} rel="prev" aria-label="Föregående dag">‹</a>
+		<a
+			class="step"
+			href={resolve(`/?date=${prevDate.toString()}`)}
+			rel="prev"
+			aria-label="Föregående dag">‹</a
+		>
 	{:else}
 		<span class="step step--disabled" aria-hidden="true">‹</span>
 	{/if}
 
-	<time datetime={date.toDateString()}>{formatted}</time>
+	<time datetime={plainDate.toString()}>{formatted}</time>
 
 	{#if canGoNext}
-		<a class="step" href={nextHref} rel="next" aria-label="Nästa dag">›</a>
+		<a
+			class="step"
+			href={resolve(`/?date=${nextDate.toString()}`)}
+			rel="next"
+			aria-label="Nästa dag">›</a
+		>
 	{:else}
 		<span class="step step--disabled" aria-hidden="true">›</span>
 	{/if}
