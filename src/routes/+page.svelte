@@ -6,7 +6,7 @@
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
 	import type { Booking } from '$lib/types';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
-	import { tick, onMount } from 'svelte';
+	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
 
 	const { data } = $props();
@@ -35,14 +35,26 @@
 		}
 	}
 
-	onMount(() => {
-		if (data.fresh) {
-			data.fresh
-				.then((result: { bookings: Booking[]; scrapedAt: string }) => applyFreshResult(result))
-				.catch((error: unknown) => {
-					scrapeError = error;
-				});
-		}
+	$effect(() => {
+		const pending = data.fresh;
+
+		freshResult = null;
+		scrapeError = null;
+
+		if (!pending) return;
+
+		let cancelled = false;
+		pending
+			.then((result: { bookings: Booking[]; scrapedAt: string }) => {
+				if (!cancelled) applyFreshResult(result);
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) scrapeError = error;
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	});
 </script>
 
