@@ -2,7 +2,7 @@
 	import type { Booking, TimeSuggestion } from '$lib/types';
 	import { print24HourTime } from '$lib/utils';
 	import { generateShareImage } from '$lib/shareImage';
-	import { cubicOut, cubicIn } from 'svelte/easing';
+	import { cubicOut } from 'svelte/easing';
 
 	type Props = {
 		suggestion: TimeSuggestion;
@@ -57,23 +57,24 @@
 
 	function panelIn(_node: Element) {
 		return {
-			duration: 400,
+			duration: 450,
 			easing: cubicOut,
 			css: (t: number) => {
 				const y = (1 - t) * 100;
-				return `transform: translateY(${y}%); opacity: ${t}`;
+				const blur = (1 - t) * 4;
+				return `transform: translateY(${y}%); opacity: ${t}; filter: blur(${blur}px)`;
 			}
 		};
 	}
 
 	function panelOut(_node: Element) {
 		return {
-			duration: 200,
-			easing: cubicIn,
+			duration: 300,
+			easing: cubicOut,
 			css: (t: number) => {
-				const y = (1 - t) * 100;
-				const scale = 0.96 + t * 0.04;
-				return `transform: translateY(${y}%) scale(${scale}); opacity: ${t}`;
+				const y = (1 - t) * 12;
+				const blur = (1 - t) * 4;
+				return `transform: translateY(${y}px); opacity: ${t}; filter: blur(${blur}px)`;
 			}
 		};
 	}
