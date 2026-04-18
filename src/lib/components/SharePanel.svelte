@@ -1,4 +1,10 @@
 <script lang="ts">
+	import {
+		CALENDAR_END_MINUTES,
+		CALENDAR_START_MINUTES,
+		hasConflict,
+		MIN_SUGGESTION_DURATION_MINUTES
+	} from '$lib/calendar';
 	import type { Booking, TimeSuggestion } from '$lib/types';
 	import { print24HourTime } from '$lib/utils';
 	import { generateShareImage } from '$lib/shareImage';
@@ -20,18 +26,24 @@
 
 	let sharing = $state(false);
 
+	function tryAdjust(next: TimeSuggestion) {
+		if (next.startMinutes < CALENDAR_START_MINUTES) return;
+		if (next.startMinutes + next.durationMinutes > CALENDAR_END_MINUTES) return;
+		if (next.durationMinutes < MIN_SUGGESTION_DURATION_MINUTES) return;
+		if (hasConflict(bookings, next.court, next.startMinutes, next.durationMinutes)) return;
+		onadjust(next);
+	}
+
 	function adjustStart(delta: number) {
-		const newStart = suggestion.startMinutes + delta;
-		if (newStart >= 9 * 60 && newStart + suggestion.durationMinutes <= 19 * 60) {
-			onadjust({ ...suggestion, startMinutes: newStart });
-		}
+		tryAdjust({ ...suggestion, startMinutes: suggestion.startMinutes + delta });
 	}
 
 	function adjustDuration(delta: number) {
-		const newDuration = suggestion.durationMinutes + delta;
-		if (newDuration >= 30 && suggestion.startMinutes + newDuration <= 19 * 60) {
-			onadjust({ ...suggestion, durationMinutes: newDuration });
-		}
+		tryAdjust({ ...suggestion, durationMinutes: suggestion.durationMinutes + delta });
+	}
+
+	function onKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Escape') onclose();
 	}
 
 	async function share() {
@@ -83,78 +95,63 @@
 	}
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<div class="share-panel-backdrop" onclick={onclose} in:panelIn out:panelOut>
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<div class="share-panel" onclick={(e) => e.stopPropagation()}>
-		<div class="share-panel--header">
-			<h3 class="share-panel--title">Tidsförslag</h3>
-			<button class="share-panel--close" onclick={onclose} aria-label="Stäng">✕</button>
-		</div>
+<svelte:window onkeydown={onKeyDown} />
 
-		<div class="share-panel--info">
-			<span class="share-panel--court">{courtLabel}</span>
-		</div>
-
-		<div class="share-panel--controls">
-			<div class="time-adjust">
-				<button
-					class="time-adjust--btn"
-					onclick={() => adjustStart(-15)}
-					aria-label="Tidigare starttid"
-				>
-					◀
-				</button>
-				<span class="time-adjust--value">{startTime}</span>
-				<button
-					class="time-adjust--btn"
-					onclick={() => adjustStart(15)}
-					aria-label="Senare starttid"
-				>
-					▶
-				</button>
-
-				<span class="time-adjust--separator">–</span>
-
-				<button
-					class="time-adjust--btn"
-					onclick={() => adjustDuration(-15)}
-					aria-label="Kortare tid"
-				>
-					◀
-				</button>
-				<span class="time-adjust--value">{endTime}</span>
-				<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
-					▶
-				</button>
-			</div>
-		</div>
-
-		<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
-			{#if sharing}
-				Skapar bild…
-			{:else}
-				Dela bild
-			{/if}
-		</button>
+<dialog class="share-panel" open in:panelIn out:panelOut>
+	<div class="share-panel--header">
+		<h3 class="share-panel--title">Tidsförslag</h3>
+		<button class="share-panel--close" onclick={onclose} aria-label="Stäng">✕</button>
 	</div>
-</div>
+
+	<div class="share-panel--info">
+		<span class="share-panel--court">{courtLabel}</span>
+	</div>
+
+	<div class="share-panel--controls">
+		<div class="time-adjust">
+			<button
+				class="time-adjust--btn"
+				onclick={() => adjustStart(-15)}
+				aria-label="Tidigare starttid"
+			>
+				◀
+			</button>
+			<span class="time-adjust--value">{startTime}</span>
+			<button class="time-adjust--btn" onclick={() => adjustStart(15)} aria-label="Senare starttid">
+				▶
+			</button>
+
+			<span class="time-adjust--separator">–</span>
+
+			<button class="time-adjust--btn" onclick={() => adjustDuration(-15)} aria-label="Kortare tid">
+				◀
+			</button>
+			<span class="time-adjust--value">{endTime}</span>
+			<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
+				▶
+			</button>
+		</div>
+	</div>
+
+	<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
+		{#if sharing}
+			Skapar bild…
+		{:else}
+			Dela bild
+		{/if}
+	</button>
+</dialog>
 
 <style lang="scss">
-	.share-panel-backdrop {
-		position: fixed;
-		inset: 0;
-		z-index: 10;
-		display: flex;
-		align-items: flex-end;
-		justify-content: center;
-		padding: 0.75rem;
-		padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-	}
-
 	.share-panel {
+		position: fixed;
+		left: 50%;
+		bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+		translate: -50% 0;
+		z-index: 10;
+
+		border: none;
+		color: inherit;
 		background: var(--c--surface--raised);
 		border-radius: 16px;
 		box-shadow:
@@ -167,7 +164,7 @@
 		flex-direction: column;
 		gap: 0.75rem;
 
-		width: 100%;
+		width: calc(100% - 1.5rem);
 		max-width: 50em;
 
 		&--header {
