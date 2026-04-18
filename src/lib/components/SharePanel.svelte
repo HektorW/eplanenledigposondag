@@ -162,7 +162,7 @@
 		}
 
 		&--share-btn {
-			background-color: var(--c--suggestion--background, hsl(145, 63%, 42%));
+			background-color: var(--c--suggestion--background, #e8853a);
 			border: none;
 			border-radius: 10px;
 			color: #fff;
