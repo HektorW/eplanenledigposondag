@@ -15,7 +15,6 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@js-temporal/polyfill": "^0.5.1",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.57.1",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
@@ -40,6 +39,7 @@
 		"node": ">=24"
 	},
 	"dependencies": {
+		"@js-temporal/polyfill": "^0.5.1",
 		"@sparticuz/chromium-min": "^147.0.0",
 		"@upstash/redis": "^1.37.0",
 		"puppeteer-core": "^24.40.0",

@@ -26,6 +26,19 @@ export function plainDateToDate(plainDate: Temporal.PlainDate): Date {
 	return new Date(plainDate.year, plainDate.month - 1, plainDate.day);
 }
 
+export function canStepToPrevDay(date: Date, now = new Date()): boolean {
+	const prev = dateToPlainDate(date).subtract({ days: 1 });
+	const today = dateToPlainDate(now);
+	return Temporal.PlainDate.compare(prev, today) >= 0;
+}
+
+export function canStepToNextDay(date: Date, now = new Date()): boolean {
+	const today = dateToPlainDate(now);
+	const next = dateToPlainDate(date).add({ days: 1 });
+	const maxDate = today.add({ days: MAX_FUTURE_DAYS });
+	return Temporal.PlainDate.compare(next, maxDate) <= 0;
+}
+
 /**
  * Parses a date query parameter string into a Date.
  * Returns the default (next Sunday) if the param is missing or invalid.
@@ -61,8 +74,9 @@ export function parseTargetDate(dateParam: string | null, now = new Date()): Par
 }
 
 export function print24HourTime(minutes: number): string {
-	const hours = Math.floor(minutes / 60);
-	const mins = Math.round(minutes) % 60;
+	const rounded = Math.round(minutes);
+	const hours = Math.floor(rounded / 60);
+	const mins = rounded % 60;
 	return `${hours}:${String(mins).padStart(2, '0')}`;
 }
 

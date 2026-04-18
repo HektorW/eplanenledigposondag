@@ -3,7 +3,10 @@ import {
 	print24HourTime,
 	getNextSundayDate,
 	parseTargetDate,
-	formattedTimeToMinutes
+	formattedTimeToMinutes,
+	canStepToPrevDay,
+	canStepToNextDay,
+	MAX_FUTURE_DAYS
 } from './utils';
 
 describe('print24HourTime', () => {
@@ -20,6 +23,13 @@ describe('print24HourTime', () => {
 	it('formats hours with minutes correctly', () => {
 		expect(print24HourTime(90)).toBe('1:30');
 		expect(print24HourTime(750)).toBe('12:30');
+	});
+
+	it('rounds fractional minutes up across the hour boundary', () => {
+		// 119.5 rounds to 120 -> 2:00, not 1:00
+		expect(print24HourTime(119.5)).toBe('2:00');
+		// 59.5 rounds to 60 -> 1:00, not 0:00
+		expect(print24HourTime(59.5)).toBe('1:00');
 	});
 });
 
@@ -139,6 +149,43 @@ describe('parseTargetDate', () => {
 	it('falls back on date too far in the future', () => {
 		const result = parseTargetDate('2026-04-24', now);
 		expect(result.usedFallback).toBe(true);
+	});
+});
+
+describe('canStepToPrevDay', () => {
+	// 2026-04-13 is a Monday
+	const now = new Date(2026, 3, 13, 12, 0, 0);
+
+	it('allows stepping back when target is after today', () => {
+		expect(canStepToPrevDay(new Date(2026, 3, 15), now)).toBe(true);
+	});
+
+	it('allows stepping back when target is tomorrow (prev lands on today)', () => {
+		expect(canStepToPrevDay(new Date(2026, 3, 14), now)).toBe(true);
+	});
+
+	it('disallows stepping back when target is today (prev would land before today)', () => {
+		expect(canStepToPrevDay(new Date(2026, 3, 13), now)).toBe(false);
+	});
+});
+
+describe('canStepToNextDay', () => {
+	// 2026-04-13 is a Monday; max future = today + MAX_FUTURE_DAYS
+	const now = new Date(2026, 3, 13, 12, 0, 0);
+	const maxDate = new Date(2026, 3, 13 + MAX_FUTURE_DAYS);
+
+	it('allows stepping forward within range', () => {
+		expect(canStepToNextDay(new Date(2026, 3, 13), now)).toBe(true);
+	});
+
+	it('allows stepping forward when next lands exactly on the max date', () => {
+		const oneBeforeMax = new Date(maxDate);
+		oneBeforeMax.setDate(oneBeforeMax.getDate() - 1);
+		expect(canStepToNextDay(oneBeforeMax, now)).toBe(true);
+	});
+
+	it('disallows stepping forward when target is already at max (next would exceed)', () => {
+		expect(canStepToNextDay(maxDate, now)).toBe(false);
 	});
 });
 

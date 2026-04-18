@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Temporal } from '@js-temporal/polyfill';
-	import { MAX_FUTURE_DAYS, dateToPlainDate } from '$lib/utils';
+	import { canStepToNextDay, canStepToPrevDay, dateToPlainDate } from '$lib/utils';
 
 	type DateStepperProps = {
 		date: Date;
@@ -10,14 +9,11 @@
 	const { date }: DateStepperProps = $props();
 
 	const plainDate = $derived(dateToPlainDate(date));
-	const today = $derived(Temporal.Now.plainDateISO());
-	const maxDate = $derived(today.add({ days: MAX_FUTURE_DAYS }));
-
 	const prevDate = $derived(plainDate.subtract({ days: 1 }));
 	const nextDate = $derived(plainDate.add({ days: 1 }));
 
-	const canGoPrev = $derived(Temporal.PlainDate.compare(prevDate, today) >= 0);
-	const canGoNext = $derived(Temporal.PlainDate.compare(nextDate, maxDate) <= 0);
+	const canGoPrev = $derived(canStepToPrevDay(date));
+	const canGoNext = $derived(canStepToNextDay(date));
 
 	const formatted = $derived(
 		date.toLocaleDateString('sv-SE', {
