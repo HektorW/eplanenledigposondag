@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { minutesToGridRow } from '$lib/calendar';
 	import type { TimeSuggestion } from '$lib/types';
 	import { print24HourTime } from '$lib/utils';
 
@@ -8,19 +9,12 @@
 
 	const { suggestion }: Props = $props();
 
-	const startRow = $derived(suggestion.startMinutes / 15 - 34);
-	const endRow = $derived((suggestion.startMinutes + suggestion.durationMinutes) / 15 - 34);
+	const startRow = $derived(minutesToGridRow(suggestion.startMinutes));
+	const endRow = $derived(minutesToGridRow(suggestion.startMinutes + suggestion.durationMinutes));
 	const column = $derived(suggestion.court === 'a' ? '2' : '3');
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="suggestion"
-	style:grid-column={column}
-	style:grid-row="{startRow} / {endRow}"
-	onclick={(e) => e.stopPropagation()}
->
+<div class="suggestion" style:grid-column={column} style:grid-row="{startRow} / {endRow}">
 	<div class="suggestion--label">Spela här?</div>
 	<div class="suggestion--time">
 		{print24HourTime(suggestion.startMinutes)} – {print24HourTime(

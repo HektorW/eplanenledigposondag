@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { CALENDAR_HOURS, CALENDAR_ROWS_PER_HOUR, CALENDAR_START_HOUR } from '$lib/calendar';
 	import type { ParsedWeatherTimeEntry } from '$lib/types';
 
 	type TimeAxisProps = {
@@ -6,16 +7,16 @@
 	};
 
 	const { weatherEntries }: TimeAxisProps = $props();
-
-	const hours = 10;
-	const startHour = 9;
 </script>
 
-{#each { length: hours } as _, index (index)}
-	{@const hour = startHour + index}
+{#each { length: CALENDAR_HOURS } as _, index (index)}
+	{@const hour = CALENDAR_START_HOUR + index}
 	{@const weatherEntry = weatherEntries.find((entry) => entry.date.getHours() === hour)}
 
-	<div class="time-axis-entry" style:grid-row="{2 + index * 4} / span 4">
+	<div
+		class="time-axis-entry"
+		style:grid-row="{2 + index * CALENDAR_ROWS_PER_HOUR} / span {CALENDAR_ROWS_PER_HOUR}"
+	>
 		<div class="hour-container">
 			<div class="hour">
 				{hour}<small>:00</small>

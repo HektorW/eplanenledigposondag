@@ -1,7 +1,13 @@
 <script lang="ts">
-	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
+	import {
+		CALENDAR_END_MINUTES,
+		CALENDAR_ROWS,
+		CALENDAR_START_MINUTES,
+		CALENDAR_STEP_MINUTES,
+		DEFAULT_SUGGESTION_DURATION_MINUTES,
+		hasConflict
+	} from '$lib/calendar';
 	import type { Booking, ParsedWeatherTimeEntry, TimeSuggestion } from '$lib/types';
-	import { formattedTimeToMinutes } from '$lib/utils';
 	import Bookings from './Bookings.svelte';
 	import SuggestedTime from './SuggestedTime.svelte';
 	import TimeAxis from './TimeAxis.svelte';
@@ -14,37 +20,34 @@
 
 	let { bookings, weatherEntries, suggestion = $bindable(null) }: CalendarProps = $props();
 
-	const defaultDuration = 60;
-
-	function hasConflict(court: 'a' | 'b', startMinutes: number, durationMinutes: number): boolean {
-		const courtId = court === 'a' ? halfCourtAId : halfCourtBId;
-		return bookings.some((booking) => {
-			if (booking.resourceId !== courtId && booking.resourceId !== fullCourtId) return false;
-			const bookingStart = formattedTimeToMinutes(booking.startTimeFormatted);
-			const bookingEnd = formattedTimeToMinutes(booking.endTimeFormatted);
-			return startMinutes < bookingEnd && startMinutes + durationMinutes > bookingStart;
-		});
-	}
-
 	function handleCourtClick(court: 'a' | 'b', event: MouseEvent) {
 		const target = event.currentTarget as HTMLElement;
 		const rect = target.getBoundingClientRect();
 		const y = event.clientY - rect.top;
-		const rowHeight = rect.height / 40;
+		const rowHeight = rect.height / CALENDAR_ROWS;
 		const rowIndex = Math.floor(y / rowHeight);
-		const clickedMinutes = 9 * 60 + rowIndex * 15;
+		const clickedMinutes = CALENDAR_START_MINUTES + rowIndex * CALENDAR_STEP_MINUTES;
 
-		// Center the suggestion around the click point
-		const centered = clickedMinutes - Math.floor(defaultDuration / 2 / 15) * 15;
-		const clamped = Math.max(9 * 60, Math.min(centered, 19 * 60 - defaultDuration));
+		const halfDurationSteps = Math.floor(
+			DEFAULT_SUGGESTION_DURATION_MINUTES / 2 / CALENDAR_STEP_MINUTES
+		);
+		const centered = clickedMinutes - halfDurationSteps * CALENDAR_STEP_MINUTES;
+		const clamped = Math.max(
+			CALENDAR_START_MINUTES,
+			Math.min(centered, CALENDAR_END_MINUTES - DEFAULT_SUGGESTION_DURATION_MINUTES)
+		);
 
-		if (hasConflict(court, clamped, defaultDuration)) return;
+		if (hasConflict(bookings, court, clamped, DEFAULT_SUGGESTION_DURATION_MINUTES)) return;
 
-		suggestion = { startMinutes: clamped, durationMinutes: defaultDuration, court };
+		suggestion = {
+			startMinutes: clamped,
+			durationMinutes: DEFAULT_SUGGESTION_DURATION_MINUTES,
+			court
+		};
 	}
 </script>
 
-<section class:has-suggestion={!!suggestion}>
+<section class:has-suggestion={!!suggestion} style:--row--count={CALENDAR_ROWS}>
 	<header>
 		<h2>Ena halvan</h2>
 		<h2>Andra halvan</h2>
@@ -82,7 +85,6 @@
 		--columns: 4.5rem 1fr 1fr;
 
 		--row--height: 1.1rem;
-		--row--count: 40; // 10 hours * 4 quarters
 
 		--header--gap: 1rem;
 		--column--gap: 0.5rem;
