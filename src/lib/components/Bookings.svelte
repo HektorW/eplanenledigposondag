@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { minutesToGridRow } from '$lib/calendar';
 	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 	import type { Booking } from '$lib/types';
 	import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
@@ -24,8 +25,8 @@
 {#snippet renderBookingEntries(entries: Booking[], column: string)}
 	{#each entries as entry (entry.bookingId)}
 		{@const minutes = getMinutes(entry)}
-		{@const startRow = Math.round(minutes.start / 15) - 34}
-		{@const endRow = Math.round(minutes.end / 15) - 34}
+		{@const startRow = minutesToGridRow(minutes.start)}
+		{@const endRow = minutesToGridRow(minutes.end)}
 
 		<article
 			class="booking-entry"
