@@ -57,12 +57,13 @@
 
 	function panelIn(_node: Element) {
 		return {
-			duration: 450,
+			duration: 350,
 			easing: cubicOut,
 			css: (t: number) => {
 				const y = (1 - t) * 100;
+				const scale = 0.97 + t * 0.03;
 				const blur = (1 - t) * 4;
-				return `transform: translateY(${y}%); opacity: ${t}; filter: blur(${blur}px)`;
+				return `transform: translateY(${y}%) scale(${scale}); opacity: ${t}; filter: blur(${blur}px)`;
 			}
 		};
 	}
@@ -70,11 +71,13 @@
 	function panelOut(_node: Element) {
 		return {
 			duration: 300,
-			easing: cubicOut,
+			easing: (t: number) => t,
 			css: (t: number) => {
-				const y = (1 - t) * 12;
-				const blur = (1 - t) * 4;
-				return `transform: translateY(${y}px); opacity: ${t}; filter: blur(${blur}px)`;
+				const y = (1 - t) * 8;
+				const scale = 0.98 + t * 0.02;
+				const blur = Math.pow(1 - t, 0.7) * 8;
+				const opacity = t * t;
+				return `transform: translateY(${y}px) scale(${scale}); opacity: ${opacity}; filter: blur(${blur}px)`;
 			}
 		};
 	}
