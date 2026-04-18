@@ -23,9 +23,11 @@
 	function handleCourtClick(court: 'a' | 'b', event: MouseEvent) {
 		const target = event.currentTarget as HTMLElement;
 		const rect = target.getBoundingClientRect();
+		const parent = target.parentElement;
+		const gap = parent ? parseFloat(getComputedStyle(parent).rowGap) || 0 : 0;
+		const rowHeight = (rect.height - (CALENDAR_ROWS - 1) * gap) / CALENDAR_ROWS;
 		const y = event.clientY - rect.top;
-		const rowHeight = rect.height / CALENDAR_ROWS;
-		const rowIndex = Math.floor(y / rowHeight);
+		const rowIndex = Math.max(0, Math.min(CALENDAR_ROWS - 1, Math.floor(y / (rowHeight + gap))));
 		const clickedMinutes = CALENDAR_START_MINUTES + rowIndex * CALENDAR_STEP_MINUTES;
 
 		const halfDurationSteps = Math.floor(
@@ -100,7 +102,7 @@
 		row-gap: var(--row--gap);
 
 		&.has-suggestion {
-			padding-bottom: 10rem;
+			padding-bottom: calc(var(--share-panel-height, 8rem) + 2rem);
 		}
 	}
 

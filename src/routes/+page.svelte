@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { hasConflict } from '$lib/calendar';
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import DateStepper from '$lib/components/DateStepper.svelte';
@@ -27,6 +28,20 @@
 	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
 	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError && !settled);
+
+	$effect(() => {
+		if (!suggestion || !bookingList) return;
+		if (
+			hasConflict(
+				bookingList,
+				suggestion.court,
+				suggestion.startMinutes,
+				suggestion.durationMinutes
+			)
+		) {
+			suggestion = null;
+		}
+	});
 
 	async function applyFreshResult(
 		result: { bookings: Booking[]; scrapedAt: string },
@@ -148,14 +163,8 @@
 	{/if}
 </main>
 
-{#if suggestion && bookingList}
-	<SharePanel
-		{suggestion}
-		bookings={bookingList}
-		date={targetDate}
-		onclose={() => (suggestion = null)}
-		onadjust={(s) => (suggestion = s)}
-	/>
+{#if bookingList}
+	<SharePanel bind:suggestion bookings={bookingList} date={targetDate} />
 {/if}
 
 <style>

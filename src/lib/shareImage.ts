@@ -30,9 +30,6 @@ const ROW_H = (H - GRID_Y - PAD) / CALENDAR_ROWS;
 
 const FONT = 'Montserrat, system-ui, sans-serif';
 
-const SUGGESTION_BG = '#e06468';
-const SUGGESTION_BORDER = '#c04a4e';
-
 function mixWithTransparent(color: string, percent: number): string {
 	return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
 }
@@ -49,7 +46,10 @@ function getThemeColors() {
 		textLight: mixWithTransparent(text, 55),
 		bookingBg: get('--c--booking--background'),
 		bookingText: get('--c--booking--text'),
-		gridLine: mixWithTransparent(text, 15)
+		gridLine: mixWithTransparent(text, 15),
+		suggestionBg: get('--c--suggestion--background'),
+		suggestionBorder: get('--c--suggestion--border'),
+		suggestionText: get('--c--suggestion--text')
 	};
 }
 
@@ -60,6 +60,10 @@ export async function generateShareImage(params: {
 }): Promise<Blob> {
 	const { date, bookings, suggestion } = params;
 	const colors = getThemeColors();
+
+	await Promise.all(
+		[400, 600, 700, 900].map((weight) => document.fonts.load(`${weight} 16px Montserrat`))
+	);
 
 	const canvas = document.createElement('canvas');
 	canvas.width = W * SCALE;
@@ -162,18 +166,18 @@ export async function generateShareImage(params: {
 		const sy = GRID_Y + startRow * ROW_H + 1;
 		const sh = (endRow - startRow) * ROW_H - 2;
 
-		ctx.fillStyle = SUGGESTION_BG;
+		ctx.fillStyle = colors.suggestionBg;
 		roundRect(ctx, x + 2, sy, w - 4, sh, 6);
 		ctx.fill();
 
-		ctx.strokeStyle = SUGGESTION_BORDER;
+		ctx.strokeStyle = colors.suggestionBorder;
 		ctx.lineWidth = 2;
 		ctx.setLineDash([5, 3]);
 		roundRect(ctx, x + 2, sy, w - 4, sh, 6);
 		ctx.stroke();
 		ctx.setLineDash([]);
 
-		ctx.fillStyle = '#ffffff';
+		ctx.fillStyle = colors.suggestionText;
 		ctx.font = `700 15px ${FONT}`;
 		ctx.fillText('Spela här?', x + 8, sy + 20, w - 16);
 		ctx.font = `400 13px ${FONT}`;
@@ -185,8 +189,11 @@ export async function generateShareImage(params: {
 		);
 	}
 
-	return new Promise((resolve) => {
-		canvas.toBlob((blob) => resolve(blob!), 'image/png');
+	return new Promise((resolve, reject) => {
+		canvas.toBlob(
+			(blob) => (blob ? resolve(blob) : reject(new Error('Failed to encode share image'))),
+			'image/png'
+		);
 	});
 }
 
