@@ -106,7 +106,10 @@ function scrapeAndCache(targetDate: Date): Promise<CacheEntry> {
 	})();
 
 	const timeout = new Promise<CacheEntry>((_, reject) => {
-		setTimeout(() => reject(new Error(`Scrape timed out after ${SCRAPE_TIMEOUT_MS}ms`)), SCRAPE_TIMEOUT_MS);
+		setTimeout(
+			() => reject(new Error(`Scrape timed out after ${SCRAPE_TIMEOUT_MS}ms`)),
+			SCRAPE_TIMEOUT_MS
+		);
 	});
 
 	const promise = Promise.race([scrape, timeout]).finally(() => {
