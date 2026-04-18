@@ -16,11 +16,7 @@
 
 	const defaultDuration = 60;
 
-	function hasConflict(
-		court: 'a' | 'b',
-		startMinutes: number,
-		durationMinutes: number
-	): boolean {
+	function hasConflict(court: 'a' | 'b', startMinutes: number, durationMinutes: number): boolean {
 		const courtId = court === 'a' ? halfCourtAId : halfCourtBId;
 		return bookings.some((booking) => {
 			if (booking.resourceId !== courtId && booking.resourceId !== fullCourtId) return false;

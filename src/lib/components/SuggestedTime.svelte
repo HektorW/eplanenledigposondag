@@ -23,7 +23,9 @@
 >
 	<div class="suggestion--label">Spela här?</div>
 	<div class="suggestion--time">
-		{print24HourTime(suggestion.startMinutes)} – {print24HourTime(suggestion.startMinutes + suggestion.durationMinutes)}
+		{print24HourTime(suggestion.startMinutes)} – {print24HourTime(
+			suggestion.startMinutes + suggestion.durationMinutes
+		)}
 	</div>
 </div>
 

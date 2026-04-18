@@ -136,8 +136,7 @@ export async function generateShareImage(params: {
 	// Draw suggestion
 	{
 		const startRow = (suggestion.startMinutes - 9 * 60) / 15;
-		const endRow =
-			(suggestion.startMinutes + suggestion.durationMinutes - 9 * 60) / 15;
+		const endRow = (suggestion.startMinutes + suggestion.durationMinutes - 9 * 60) / 15;
 		const x = suggestion.court === 'a' ? COURT_A_X : COURT_B_X;
 		const w = COURT_W;
 		const sy = GRID_Y + startRow * ROW_H + 1;

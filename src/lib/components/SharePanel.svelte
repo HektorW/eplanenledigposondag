@@ -15,9 +15,7 @@
 	const { suggestion, bookings, date, onclose, onadjust }: Props = $props();
 
 	const startTime = $derived(print24HourTime(suggestion.startMinutes));
-	const endTime = $derived(
-		print24HourTime(suggestion.startMinutes + suggestion.durationMinutes)
-	);
+	const endTime = $derived(print24HourTime(suggestion.startMinutes + suggestion.durationMinutes));
 	const courtLabel = $derived(suggestion.court === 'a' ? 'Ena halvan' : 'Andra halvan');
 
 	let sharing = $state(false);
@@ -83,29 +81,17 @@
 				◀
 			</button>
 			<span class="time-adjust--value">{startTime}</span>
-			<button
-				class="time-adjust--btn"
-				onclick={() => adjustStart(15)}
-				aria-label="Senare starttid"
-			>
+			<button class="time-adjust--btn" onclick={() => adjustStart(15)} aria-label="Senare starttid">
 				▶
 			</button>
 
 			<span class="time-adjust--separator">–</span>
 
-			<button
-				class="time-adjust--btn"
-				onclick={() => adjustDuration(-15)}
-				aria-label="Kortare tid"
-			>
+			<button class="time-adjust--btn" onclick={() => adjustDuration(-15)} aria-label="Kortare tid">
 				◀
 			</button>
 			<span class="time-adjust--value">{endTime}</span>
-			<button
-				class="time-adjust--btn"
-				onclick={() => adjustDuration(15)}
-				aria-label="Längre tid"
-			>
+			<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
 				▶
 			</button>
 		</div>
