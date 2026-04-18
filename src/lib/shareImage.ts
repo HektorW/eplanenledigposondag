@@ -3,16 +3,16 @@ import type { Booking, TimeSuggestion } from '$lib/types';
 import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
 
 const SCALE = 2;
-const W = 540;
-const H = 720;
-const PAD = 20;
+const W = 460;
+const H = 620;
+const PAD = 18;
 
 const HEADER_Y = PAD;
-const HEADER_H = 60;
+const HEADER_H = 56;
 const COL_HEADER_Y = HEADER_Y + HEADER_H;
 const COL_HEADER_H = 24;
 const GRID_Y = COL_HEADER_Y + COL_HEADER_H;
-const TIME_COL_W = 48;
+const TIME_COL_W = 46;
 const COURT_GAP = 8;
 const COURT_W = (W - PAD * 2 - TIME_COL_W - COURT_GAP) / 2;
 const COURT_A_X = PAD + TIME_COL_W;
@@ -28,8 +28,8 @@ const TEXT = '#1a3a59';
 const TEXT_LIGHT = '#5a7a99';
 const BOOKING_BG = '#3d6a94';
 const BOOKING_TEXT = '#ffffff';
-const SUGGESTION_BG = '#e8853a';
-const SUGGESTION_BORDER = '#c96a20';
+const SUGGESTION_BG = '#e06468';
+const SUGGESTION_BORDER = '#c04a4e';
 const GRID_LINE = '#ccdaea';
 
 export async function generateShareImage(params: {
@@ -50,21 +50,21 @@ export async function generateShareImage(params: {
 
 	// Header
 	ctx.fillStyle = TEXT;
-	ctx.font = `900 28px ${FONT}`;
-	ctx.fillText('Söndagsboll ⚽', PAD, HEADER_Y + 28);
+	ctx.font = `900 30px ${FONT}`;
+	ctx.fillText('Söndagsboll ⚽', PAD, HEADER_Y + 30);
 
 	ctx.fillStyle = TEXT_LIGHT;
-	ctx.font = `400 15px ${FONT}`;
+	ctx.font = `400 16px ${FONT}`;
 	const dateStr = date.toLocaleDateString('sv-SE', {
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long'
 	});
-	ctx.fillText(dateStr.charAt(0).toUpperCase() + dateStr.slice(1), PAD, HEADER_Y + 48);
+	ctx.fillText(dateStr.charAt(0).toUpperCase() + dateStr.slice(1), PAD, HEADER_Y + 50);
 
 	// Column headers
 	ctx.fillStyle = TEXT;
-	ctx.font = `700 13px ${FONT}`;
+	ctx.font = `700 14px ${FONT}`;
 	ctx.fillText('Ena halvan', COURT_A_X + 4, COL_HEADER_Y + 16);
 	ctx.fillText('Andra halvan', COURT_B_X + 4, COL_HEADER_Y + 16);
 
@@ -75,8 +75,8 @@ export async function generateShareImage(params: {
 
 		if (i < HOURS) {
 			ctx.fillStyle = TEXT_LIGHT;
-			ctx.font = `600 12px ${FONT}`;
-			ctx.fillText(`${hour}:00`, PAD, y + 13);
+			ctx.font = `600 13px ${FONT}`;
+			ctx.fillText(`${hour}:00`, PAD, y + 14);
 		}
 
 		ctx.strokeStyle = GRID_LINE;
@@ -119,14 +119,14 @@ export async function generateShareImage(params: {
 
 		ctx.fillStyle = BOOKING_TEXT;
 		if (booking.bookedBy) {
-			ctx.font = `600 12px ${FONT}`;
-			ctx.fillText(booking.bookedBy, x + 8, by + 16, w - 16);
+			ctx.font = `600 13px ${FONT}`;
+			ctx.fillText(booking.bookedBy, x + 8, by + 17, w - 16);
 		}
-		ctx.font = `400 11px ${FONT}`;
+		ctx.font = `400 12px ${FONT}`;
 		ctx.fillText(
 			`${print24HourTime(start)} – ${print24HourTime(end)}`,
 			x + 8,
-			by + (booking.bookedBy ? 30 : 16),
+			by + (booking.bookedBy ? 32 : 17),
 			w - 16
 		);
 	}
@@ -152,13 +152,13 @@ export async function generateShareImage(params: {
 		ctx.setLineDash([]);
 
 		ctx.fillStyle = '#ffffff';
-		ctx.font = `700 14px ${FONT}`;
-		ctx.fillText('Spela här?', x + 8, sy + 18, w - 16);
-		ctx.font = `400 12px ${FONT}`;
+		ctx.font = `700 15px ${FONT}`;
+		ctx.fillText('Spela här?', x + 8, sy + 20, w - 16);
+		ctx.font = `400 13px ${FONT}`;
 		ctx.fillText(
 			`${print24HourTime(suggestion.startMinutes)} – ${print24HourTime(suggestion.startMinutes + suggestion.durationMinutes)}`,
 			x + 8,
-			sy + 34,
+			sy + 38,
 			w - 16
 		);
 	}

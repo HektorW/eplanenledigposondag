@@ -31,8 +31,8 @@
 
 <style lang="scss">
 	.suggestion {
-		background-color: var(--c--suggestion--background, #e8853a);
-		border: 2px dashed var(--c--suggestion--border, #c96a20);
+		background-color: var(--c--suggestion--background, #e06468);
+		border: 2px dashed var(--c--suggestion--border, #c04a4e);
 		color: #fff;
 
 		border-radius: var(--border-radius--100);
