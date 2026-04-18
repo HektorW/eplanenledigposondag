@@ -79,7 +79,11 @@
 
 	{#if bookingList && scrapedAt}
 		<FreshnessIndicator {scrapedAt} {refreshing} />
-		<Calendar bookings={bookingList} weatherEntries={middayWeather.targetDateWeatherEntryList} bind:suggestion />
+		<Calendar
+			bookings={bookingList}
+			weatherEntries={middayWeather.targetDateWeatherEntryList}
+			bind:suggestion
+		/>
 
 		{#if !suggestion}
 			<p class="hint">Tryck på en ledig tid för att skapa ett tidsförslag</p>
