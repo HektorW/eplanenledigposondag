@@ -1,3 +1,12 @@
+import {
+	CALENDAR_END_MINUTES,
+	CALENDAR_HOURS,
+	CALENDAR_ROWS,
+	CALENDAR_ROWS_PER_HOUR,
+	CALENDAR_START_HOUR,
+	CALENDAR_START_MINUTES,
+	minutesToRowIndex
+} from '$lib/calendar';
 import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 import type { Booking, TimeSuggestion } from '$lib/types';
 import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
@@ -17,14 +26,16 @@ const COURT_GAP = 8;
 const COURT_W = (W - PAD * 2 - TIME_COL_W - COURT_GAP) / 2;
 const COURT_A_X = PAD + TIME_COL_W;
 const COURT_B_X = COURT_A_X + COURT_W + COURT_GAP;
-const HOURS = 10;
-const ROWS = HOURS * 4;
-const ROW_H = (H - GRID_Y - PAD) / ROWS;
+const ROW_H = (H - GRID_Y - PAD) / CALENDAR_ROWS;
 
 const FONT = 'Montserrat, system-ui, sans-serif';
 
 const SUGGESTION_BG = '#e06468';
 const SUGGESTION_BORDER = '#c04a4e';
+
+function mixWithTransparent(color: string, percent: number): string {
+	return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
+}
 
 function getThemeColors() {
 	const style = getComputedStyle(document.documentElement);
@@ -35,17 +46,11 @@ function getThemeColors() {
 	return {
 		bg: get('--c--main--background'),
 		text,
-		textLight: withAlpha(text, 0.55),
+		textLight: mixWithTransparent(text, 55),
 		bookingBg: get('--c--booking--background'),
 		bookingText: get('--c--booking--text'),
-		gridLine: get('--c--grid--line') || withAlpha(text, 0.15)
+		gridLine: mixWithTransparent(text, 15)
 	};
-}
-
-function withAlpha(color: string, alpha: number): string {
-	const match = color.match(/[\d.]+/g);
-	if (!match || match.length < 3) return color;
-	return `rgba(${match[0]}, ${match[1]}, ${match[2]}, ${alpha})`;
 }
 
 export async function generateShareImage(params: {
@@ -86,11 +91,11 @@ export async function generateShareImage(params: {
 	ctx.fillText('Andra halvan', COURT_B_X + 4, COL_HEADER_Y + 16);
 
 	// Time axis + grid lines
-	for (let i = 0; i <= HOURS; i++) {
-		const y = GRID_Y + i * 4 * ROW_H;
-		const hour = 9 + i;
+	for (let i = 0; i <= CALENDAR_HOURS; i++) {
+		const y = GRID_Y + i * CALENDAR_ROWS_PER_HOUR * ROW_H;
+		const hour = CALENDAR_START_HOUR + i;
 
-		if (i < HOURS) {
+		if (i < CALENDAR_HOURS) {
 			ctx.fillStyle = colors.textLight;
 			ctx.font = `600 13px ${FONT}`;
 			ctx.fillText(`${hour}:00`, PAD, y + 14);
@@ -108,10 +113,10 @@ export async function generateShareImage(params: {
 	for (const booking of bookings) {
 		const start = formattedTimeToMinutes(booking.startTimeFormatted);
 		const end = formattedTimeToMinutes(booking.endTimeFormatted);
-		if (start < 9 * 60 || end > 19 * 60) continue;
+		if (start < CALENDAR_START_MINUTES || end > CALENDAR_END_MINUTES) continue;
 
-		const startRow = (start - 9 * 60) / 15;
-		const endRow = (end - 9 * 60) / 15;
+		const startRow = minutesToRowIndex(start);
+		const endRow = minutesToRowIndex(end);
 
 		let x: number, w: number;
 		if (booking.resourceId === halfCourtAId) {
@@ -150,8 +155,8 @@ export async function generateShareImage(params: {
 
 	// Draw suggestion
 	{
-		const startRow = (suggestion.startMinutes - 9 * 60) / 15;
-		const endRow = (suggestion.startMinutes + suggestion.durationMinutes - 9 * 60) / 15;
+		const startRow = minutesToRowIndex(suggestion.startMinutes);
+		const endRow = minutesToRowIndex(suggestion.startMinutes + suggestion.durationMinutes);
 		const x = suggestion.court === 'a' ? COURT_A_X : COURT_B_X;
 		const w = COURT_W;
 		const sy = GRID_Y + startRow * ROW_H + 1;
