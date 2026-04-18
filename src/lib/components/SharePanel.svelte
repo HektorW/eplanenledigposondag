@@ -147,16 +147,18 @@
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
+		padding: 0.75rem;
+		padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 	}
 
 	.share-panel {
 		background: var(--c--surface--raised);
-		border-top-left-radius: 16px;
-		border-top-right-radius: 16px;
-		box-shadow: 0 -2px 16px hsl(220deg 40% 30% / 0.15);
+		border-radius: 16px;
+		box-shadow:
+			0 4px 24px hsl(220deg 40% 20% / 0.2),
+			0 0 0 1px hsl(220deg 40% 50% / 0.08);
 
 		padding: 1.25rem;
-		padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
 
 		display: flex;
 		flex-direction: column;
