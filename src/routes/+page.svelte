@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { hasConflict } from '$lib/calendar';
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
@@ -23,6 +24,20 @@
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError);
 
 	let suggestion: TimeSuggestion | null = $state(null);
+
+	$effect(() => {
+		if (!suggestion || !bookingList) return;
+		if (
+			hasConflict(
+				bookingList,
+				suggestion.court,
+				suggestion.startMinutes,
+				suggestion.durationMinutes
+			)
+		) {
+			suggestion = null;
+		}
+	});
 
 	async function applyFreshResult(result: { bookings: Booking[]; scrapedAt: string }) {
 		const doUpdate = async () => {
@@ -113,14 +128,8 @@
 	{/if}
 </main>
 
-{#if suggestion && bookingList}
-	<SharePanel
-		{suggestion}
-		bookings={bookingList}
-		date={targetDate}
-		onclose={() => (suggestion = null)}
-		onadjust={(s) => (suggestion = s)}
-	/>
+{#if bookingList}
+	<SharePanel bind:suggestion bookings={bookingList} date={targetDate} />
 {/if}
 
 <style>

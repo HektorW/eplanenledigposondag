@@ -24,26 +24,23 @@
 </div>
 
 <style lang="scss">
+	@use '../styles/calendar-block' as block;
+
 	.suggestion {
-		background-color: var(--c--suggestion--background, #e06468);
-		border: 2px dashed var(--c--suggestion--border, #c04a4e);
-		color: #fff;
+		@include block.base;
 
-		border-radius: var(--border-radius--100);
-
-		padding: 0.75rem;
+		background-color: var(--c--suggestion--background);
+		border: 2px dashed var(--c--suggestion--border);
+		color: var(--c--suggestion--text);
 		z-index: 1;
 
 		&--label {
-			font-size: 0.8rem;
+			@include block.primary;
 			font-weight: 700;
-			margin: 0;
 		}
 
 		&--time {
-			font-size: 0.7rem;
-			font-weight: 400;
-			margin-top: 0.2em;
+			@include block.secondary;
 		}
 	}
 </style>

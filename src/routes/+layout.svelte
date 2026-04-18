@@ -22,6 +22,10 @@
 		--c--booking--background: var(--c--blue--35);
 		--c--booking--text: var(--c--white--100);
 
+		--c--suggestion--background: #e06468;
+		--c--suggestion--border: #c04a4e;
+		--c--suggestion--text: var(--c--white--100);
+
 		--c--surface--raised: var(--c--blue--92);
 
 		--c--focus--outline: var(--c--blue--20);

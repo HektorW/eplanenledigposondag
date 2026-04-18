@@ -11,43 +11,62 @@
 	import { cubicOut } from 'svelte/easing';
 
 	type Props = {
-		suggestion: TimeSuggestion;
+		suggestion: TimeSuggestion | null;
 		bookings: Booking[];
 		date: Date;
-		onclose: () => void;
-		onadjust: (suggestion: TimeSuggestion) => void;
 	};
 
-	const { suggestion, bookings, date, onclose, onadjust }: Props = $props();
+	let { suggestion = $bindable(), bookings, date }: Props = $props();
 
-	const startTime = $derived(print24HourTime(suggestion.startMinutes));
-	const endTime = $derived(print24HourTime(suggestion.startMinutes + suggestion.durationMinutes));
-	const courtLabel = $derived(suggestion.court === 'a' ? 'Ena halvan' : 'Andra halvan');
+	const startTime = $derived(suggestion ? print24HourTime(suggestion.startMinutes) : '');
+	const endTime = $derived(
+		suggestion ? print24HourTime(suggestion.startMinutes + suggestion.durationMinutes) : ''
+	);
+	const courtLabel = $derived(
+		suggestion ? (suggestion.court === 'a' ? 'Ena halvan' : 'Andra halvan') : ''
+	);
 
 	let sharing = $state(false);
+	let shareError = $state<string | null>(null);
+	let panelHeight = $state(0);
+
+	$effect(() => {
+		if (!panelHeight) return;
+		document.documentElement.style.setProperty('--share-panel-height', `${panelHeight}px`);
+		return () => document.documentElement.style.removeProperty('--share-panel-height');
+	});
+
+	function close() {
+		suggestion = null;
+		shareError = null;
+	}
 
 	function tryAdjust(next: TimeSuggestion) {
 		if (next.startMinutes < CALENDAR_START_MINUTES) return;
 		if (next.startMinutes + next.durationMinutes > CALENDAR_END_MINUTES) return;
 		if (next.durationMinutes < MIN_SUGGESTION_DURATION_MINUTES) return;
 		if (hasConflict(bookings, next.court, next.startMinutes, next.durationMinutes)) return;
-		onadjust(next);
+		suggestion = next;
 	}
 
 	function adjustStart(delta: number) {
+		if (!suggestion) return;
 		tryAdjust({ ...suggestion, startMinutes: suggestion.startMinutes + delta });
 	}
 
 	function adjustDuration(delta: number) {
+		if (!suggestion) return;
 		tryAdjust({ ...suggestion, durationMinutes: suggestion.durationMinutes + delta });
 	}
 
 	function onKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Escape') onclose();
+		if (event.key === 'Escape' && suggestion) close();
 	}
 
 	async function share() {
+		if (!suggestion) return;
 		sharing = true;
+		shareError = null;
 		try {
 			const blob = await generateShareImage({ date, bookings, suggestion });
 			const file = new File([blob], 'sondagsboll.png', { type: 'image/png' });
@@ -61,6 +80,10 @@
 				a.download = 'sondagsboll.png';
 				a.click();
 				URL.revokeObjectURL(url);
+			}
+		} catch (error) {
+			if (!(error instanceof DOMException && error.name === 'AbortError')) {
+				shareError = 'Kunde inte dela bilden. Försök igen.';
 			}
 		} finally {
 			sharing = false;
@@ -97,50 +120,64 @@
 
 <svelte:window onkeydown={onKeyDown} />
 
-<dialog class="share-panel" open in:panelIn out:panelOut>
-	<div class="share-panel--header">
-		<h3 class="share-panel--title">Tidsförslag</h3>
-		<button class="share-panel--close" onclick={onclose} aria-label="Stäng">✕</button>
-	</div>
-
-	<div class="share-panel--info">
-		<span class="share-panel--court">{courtLabel}</span>
-	</div>
-
-	<div class="share-panel--controls">
-		<div class="time-adjust">
-			<button
-				class="time-adjust--btn"
-				onclick={() => adjustStart(-15)}
-				aria-label="Tidigare starttid"
-			>
-				◀
-			</button>
-			<span class="time-adjust--value">{startTime}</span>
-			<button class="time-adjust--btn" onclick={() => adjustStart(15)} aria-label="Senare starttid">
-				▶
-			</button>
-
-			<span class="time-adjust--separator">–</span>
-
-			<button class="time-adjust--btn" onclick={() => adjustDuration(-15)} aria-label="Kortare tid">
-				◀
-			</button>
-			<span class="time-adjust--value">{endTime}</span>
-			<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
-				▶
-			</button>
+{#if suggestion}
+	<dialog class="share-panel" open bind:clientHeight={panelHeight} in:panelIn out:panelOut>
+		<div class="share-panel--header">
+			<h3 class="share-panel--title">Tidsförslag</h3>
+			<button class="share-panel--close" onclick={close} aria-label="Stäng">✕</button>
 		</div>
-	</div>
 
-	<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
-		{#if sharing}
-			Skapar bild…
-		{:else}
-			Dela bild
+		<div class="share-panel--info">
+			<span class="share-panel--court">{courtLabel}</span>
+		</div>
+
+		<div class="share-panel--controls">
+			<div class="time-adjust">
+				<button
+					class="time-adjust--btn"
+					onclick={() => adjustStart(-15)}
+					aria-label="Tidigare starttid"
+				>
+					◀
+				</button>
+				<span class="time-adjust--value">{startTime}</span>
+				<button
+					class="time-adjust--btn"
+					onclick={() => adjustStart(15)}
+					aria-label="Senare starttid"
+				>
+					▶
+				</button>
+
+				<span class="time-adjust--separator">–</span>
+
+				<button
+					class="time-adjust--btn"
+					onclick={() => adjustDuration(-15)}
+					aria-label="Kortare tid"
+				>
+					◀
+				</button>
+				<span class="time-adjust--value">{endTime}</span>
+				<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
+					▶
+				</button>
+			</div>
+		</div>
+
+		{#if shareError}
+			<p class="share-panel--error" role="alert">{shareError}</p>
 		{/if}
-	</button>
-</dialog>
+
+		<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
+			{#if sharing}
+				Skapar bild…
+			{:else}
+				Dela bild
+			{/if}
+		</button>
+	</dialog>
+{/if}
 
 <style lang="scss">
 	.share-panel {
@@ -208,12 +245,23 @@
 			opacity: 0.7;
 		}
 
+		&--error {
+			background: hsl(from var(--c--suggestion--background) h s l / 0.15);
+			border-radius: 8px;
+			color: var(--c--suggestion--background);
+			font-size: 0.85rem;
+			font-weight: 600;
+			margin: 0;
+			padding: 0.5rem 0.75rem;
+			text-align: center;
+		}
+
 		&--share-btn {
-			background-color: var(--c--suggestion--background, #e06468);
+			background-color: var(--c--suggestion--background);
 			touch-action: manipulation;
 			border: none;
 			border-radius: 10px;
-			color: #fff;
+			color: var(--c--suggestion--text);
 			cursor: pointer;
 			font-family: inherit;
 			font-size: 1rem;

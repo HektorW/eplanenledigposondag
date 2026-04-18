@@ -49,25 +49,22 @@
 {@render renderBookingEntries(fullCourtEntries, '2 / 4')}
 
 <style lang="scss">
+	@use '../styles/calendar-block' as block;
+
 	.booking-entry {
+		@include block.base;
+
 		background-color: var(--c--booking--background);
 		color: var(--c--booking--text);
 		box-shadow: var(--box-shadow--booking);
 
-		border-radius: var(--border-radius--100);
-
-		padding: 0.75rem;
-
 		&--name {
-			font-size: 0.8rem;
+			@include block.primary;
 			font-weight: 600;
-			margin: 0;
 		}
 
 		&--time {
-			font-size: 0.7rem;
-			font-weight: 400;
-			margin-top: 0.2em;
+			@include block.secondary;
 		}
 	}
 </style>
