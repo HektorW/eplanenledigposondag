@@ -2,7 +2,7 @@
 	import type { Booking, TimeSuggestion } from '$lib/types';
 	import { print24HourTime } from '$lib/utils';
 	import { generateShareImage } from '$lib/shareImage';
-	import { fly } from 'svelte/transition';
+	import { cubicOut, cubicIn } from 'svelte/easing';
 
 	type Props = {
 		suggestion: TimeSuggestion;
@@ -38,20 +38,15 @@
 		sharing = true;
 		try {
 			const blob = await generateShareImage({ date, bookings, suggestion });
-			const file = new File([blob], 'söndagsboll.png', { type: 'image/png' });
+			const file = new File([blob], 'sondagsboll.png', { type: 'image/png' });
 
 			if (navigator.canShare?.({ files: [file] })) {
-				await navigator.share({
-					title: 'Söndagsboll ⚽',
-					text: `Nån som vill spela ${startTime}–${endTime} på söndag?`,
-					files: [file]
-				});
+				await navigator.share({ files: [file] });
 			} else {
-				// Desktop fallback: download
 				const url = URL.createObjectURL(blob);
 				const a = document.createElement('a');
 				a.href = url;
-				a.download = 'söndagsboll.png';
+				a.download = 'sondagsboll.png';
 				a.click();
 				URL.revokeObjectURL(url);
 			}
@@ -59,61 +54,101 @@
 			sharing = false;
 		}
 	}
+
+	function panelIn(_node: Element) {
+		return {
+			duration: 400,
+			easing: cubicOut,
+			css: (t: number) => {
+				const y = (1 - t) * 100;
+				return `transform: translateY(${y}%); opacity: ${t}`;
+			}
+		};
+	}
+
+	function panelOut(_node: Element) {
+		return {
+			duration: 200,
+			easing: cubicIn,
+			css: (t: number) => {
+				const y = (1 - t) * 100;
+				const scale = 0.96 + t * 0.04;
+				return `transform: translateY(${y}%) scale(${scale}); opacity: ${t}`;
+			}
+		};
+	}
 </script>
 
-<div class="share-panel" transition:fly={{ y: 200, duration: 300 }}>
-	<div class="share-panel--header">
-		<h3 class="share-panel--title">Tidsförslag</h3>
-		<button class="share-panel--close" onclick={onclose} aria-label="Stäng">✕</button>
-	</div>
-
-	<div class="share-panel--info">
-		<span class="share-panel--court">{courtLabel}</span>
-	</div>
-
-	<div class="share-panel--controls">
-		<div class="time-adjust">
-			<button
-				class="time-adjust--btn"
-				onclick={() => adjustStart(-15)}
-				aria-label="Tidigare starttid"
-			>
-				◀
-			</button>
-			<span class="time-adjust--value">{startTime}</span>
-			<button class="time-adjust--btn" onclick={() => adjustStart(15)} aria-label="Senare starttid">
-				▶
-			</button>
-
-			<span class="time-adjust--separator">–</span>
-
-			<button class="time-adjust--btn" onclick={() => adjustDuration(-15)} aria-label="Kortare tid">
-				◀
-			</button>
-			<span class="time-adjust--value">{endTime}</span>
-			<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
-				▶
-			</button>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<div class="share-panel-backdrop" onclick={onclose} in:panelIn out:panelOut>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<div class="share-panel" onclick={(e) => e.stopPropagation()}>
+		<div class="share-panel--header">
+			<h3 class="share-panel--title">Tidsförslag</h3>
+			<button class="share-panel--close" onclick={onclose} aria-label="Stäng">✕</button>
 		</div>
-	</div>
 
-	<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
-		{#if sharing}
-			Skapar bild…
-		{:else}
-			Dela bild
-		{/if}
-	</button>
+		<div class="share-panel--info">
+			<span class="share-panel--court">{courtLabel}</span>
+		</div>
+
+		<div class="share-panel--controls">
+			<div class="time-adjust">
+				<button
+					class="time-adjust--btn"
+					onclick={() => adjustStart(-15)}
+					aria-label="Tidigare starttid"
+				>
+					◀
+				</button>
+				<span class="time-adjust--value">{startTime}</span>
+				<button
+					class="time-adjust--btn"
+					onclick={() => adjustStart(15)}
+					aria-label="Senare starttid"
+				>
+					▶
+				</button>
+
+				<span class="time-adjust--separator">–</span>
+
+				<button
+					class="time-adjust--btn"
+					onclick={() => adjustDuration(-15)}
+					aria-label="Kortare tid"
+				>
+					◀
+				</button>
+				<span class="time-adjust--value">{endTime}</span>
+				<button class="time-adjust--btn" onclick={() => adjustDuration(15)} aria-label="Längre tid">
+					▶
+				</button>
+			</div>
+		</div>
+
+		<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
+			{#if sharing}
+				Skapar bild…
+			{:else}
+				Dela bild
+			{/if}
+		</button>
+	</div>
 </div>
 
 <style lang="scss">
-	.share-panel {
+	.share-panel-backdrop {
 		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
+		inset: 0;
 		z-index: 10;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+	}
 
+	.share-panel {
 		background: var(--c--surface--raised);
 		border-top-left-radius: 16px;
 		border-top-right-radius: 16px;
@@ -126,8 +161,8 @@
 		flex-direction: column;
 		gap: 0.75rem;
 
+		width: 100%;
 		max-width: 50em;
-		margin-inline: auto;
 
 		&--header {
 			display: flex;
@@ -154,9 +189,14 @@
 			place-items: center;
 			border-radius: 10px;
 			touch-action: manipulation;
+			transition: background 0.15s;
 
 			&:hover {
 				background: hsl(from var(--c--main--text) h s l / 0.15);
+			}
+
+			&:active {
+				scale: 0.92;
 			}
 		}
 
@@ -177,9 +217,16 @@
 			font-weight: 700;
 			padding: 0.85rem 1.5rem;
 			width: 100%;
+			transition:
+				filter 0.15s,
+				scale 0.1s;
 
 			&:hover:not(:disabled) {
 				filter: brightness(1.1);
+			}
+
+			&:active:not(:disabled) {
+				scale: 0.97;
 			}
 
 			&:disabled {
@@ -208,9 +255,14 @@
 			display: grid;
 			place-items: center;
 			touch-action: manipulation;
+			transition: background 0.15s;
 
 			&:hover {
 				background: hsl(from var(--c--main--text) h s l / 0.15);
+			}
+
+			&:active {
+				scale: 0.9;
 			}
 		}
 
