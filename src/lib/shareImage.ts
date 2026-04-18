@@ -23,14 +23,30 @@ const ROW_H = (H - GRID_Y - PAD) / ROWS;
 
 const FONT = 'Montserrat, system-ui, sans-serif';
 
-const BG = '#e8f0fa';
-const TEXT = '#1a3a59';
-const TEXT_LIGHT = '#5a7a99';
-const BOOKING_BG = '#3d6a94';
-const BOOKING_TEXT = '#ffffff';
 const SUGGESTION_BG = '#e06468';
 const SUGGESTION_BORDER = '#c04a4e';
-const GRID_LINE = '#ccdaea';
+
+function getThemeColors() {
+	const style = getComputedStyle(document.documentElement);
+	const get = (prop: string) => style.getPropertyValue(prop).trim();
+
+	const text = get('--c--main--text');
+
+	return {
+		bg: get('--c--main--background'),
+		text,
+		textLight: withAlpha(text, 0.55),
+		bookingBg: get('--c--booking--background'),
+		bookingText: get('--c--booking--text'),
+		gridLine: get('--c--grid--line') || withAlpha(text, 0.15)
+	};
+}
+
+function withAlpha(color: string, alpha: number): string {
+	const match = color.match(/[\d.]+/g);
+	if (!match || match.length < 3) return color;
+	return `rgba(${match[0]}, ${match[1]}, ${match[2]}, ${alpha})`;
+}
 
 export async function generateShareImage(params: {
 	date: Date;
@@ -38,6 +54,7 @@ export async function generateShareImage(params: {
 	suggestion: TimeSuggestion;
 }): Promise<Blob> {
 	const { date, bookings, suggestion } = params;
+	const colors = getThemeColors();
 
 	const canvas = document.createElement('canvas');
 	canvas.width = W * SCALE;
@@ -45,15 +62,15 @@ export async function generateShareImage(params: {
 	const ctx = canvas.getContext('2d')!;
 	ctx.scale(SCALE, SCALE);
 
-	ctx.fillStyle = BG;
+	ctx.fillStyle = colors.bg;
 	ctx.fillRect(0, 0, W, H);
 
 	// Header
-	ctx.fillStyle = TEXT;
+	ctx.fillStyle = colors.text;
 	ctx.font = `900 30px ${FONT}`;
 	ctx.fillText('Söndagsboll ⚽', PAD, HEADER_Y + 30);
 
-	ctx.fillStyle = TEXT_LIGHT;
+	ctx.fillStyle = colors.textLight;
 	ctx.font = `400 16px ${FONT}`;
 	const dateStr = date.toLocaleDateString('sv-SE', {
 		weekday: 'long',
@@ -63,7 +80,7 @@ export async function generateShareImage(params: {
 	ctx.fillText(dateStr.charAt(0).toUpperCase() + dateStr.slice(1), PAD, HEADER_Y + 50);
 
 	// Column headers
-	ctx.fillStyle = TEXT;
+	ctx.fillStyle = colors.text;
 	ctx.font = `700 14px ${FONT}`;
 	ctx.fillText('Ena halvan', COURT_A_X + 4, COL_HEADER_Y + 16);
 	ctx.fillText('Andra halvan', COURT_B_X + 4, COL_HEADER_Y + 16);
@@ -74,12 +91,12 @@ export async function generateShareImage(params: {
 		const hour = 9 + i;
 
 		if (i < HOURS) {
-			ctx.fillStyle = TEXT_LIGHT;
+			ctx.fillStyle = colors.textLight;
 			ctx.font = `600 13px ${FONT}`;
 			ctx.fillText(`${hour}:00`, PAD, y + 14);
 		}
 
-		ctx.strokeStyle = GRID_LINE;
+		ctx.strokeStyle = colors.gridLine;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.moveTo(COURT_A_X, y);
@@ -113,11 +130,11 @@ export async function generateShareImage(params: {
 		const by = GRID_Y + startRow * ROW_H + 1;
 		const bh = (endRow - startRow) * ROW_H - 2;
 
-		ctx.fillStyle = BOOKING_BG;
+		ctx.fillStyle = colors.bookingBg;
 		roundRect(ctx, x + 2, by, w - 4, bh, 6);
 		ctx.fill();
 
-		ctx.fillStyle = BOOKING_TEXT;
+		ctx.fillStyle = colors.bookingText;
 		if (booking.bookedBy) {
 			ctx.font = `600 13px ${FONT}`;
 			ctx.fillText(booking.bookedBy, x + 8, by + 17, w - 16);
