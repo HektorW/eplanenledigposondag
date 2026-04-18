@@ -180,11 +180,9 @@ export async function generateShareImage(params: {
 		);
 	}
 
-	// Roundtrip through dataURL → fetch to produce a blob that iOS
-	// Safari recognises for image previews in the share sheet.
-	const dataUrl = canvas.toDataURL('image/png');
-	const res = await fetch(dataUrl);
-	return res.blob();
+	return new Promise((resolve) => {
+		canvas.toBlob((blob) => resolve(blob!), 'image/png');
+	});
 }
 
 function roundRect(
