@@ -142,17 +142,21 @@
 		}
 
 		&--close {
-			background: none;
+			background: hsl(from var(--c--main--text) h s l / 0.08);
 			border: none;
 			color: var(--c--main--text);
 			cursor: pointer;
-			font-size: 1.1rem;
+			font-size: 1.25rem;
 			line-height: 1;
-			padding: 0.25rem 0.5rem;
-			border-radius: 6px;
+			min-height: 2.75rem;
+			min-width: 2.75rem;
+			display: grid;
+			place-items: center;
+			border-radius: 10px;
+			touch-action: manipulation;
 
 			&:hover {
-				background: hsl(from var(--c--main--text) h s l / 0.1);
+				background: hsl(from var(--c--main--text) h s l / 0.15);
 			}
 		}
 
@@ -162,7 +166,8 @@
 		}
 
 		&--share-btn {
-			background-color: var(--c--suggestion--background, #e8853a);
+			background-color: var(--c--suggestion--background, #e06468);
+			touch-action: manipulation;
 			border: none;
 			border-radius: 10px;
 			color: #fff;
@@ -193,12 +198,16 @@
 		&--btn {
 			background: hsl(from var(--c--main--text) h s l / 0.08);
 			border: none;
-			border-radius: 6px;
+			border-radius: 8px;
 			color: var(--c--main--text);
 			cursor: pointer;
-			font-size: 0.75rem;
+			font-size: 0.85rem;
 			line-height: 1;
-			padding: 0.5rem 0.6rem;
+			min-height: 2.75rem;
+			min-width: 2.75rem;
+			display: grid;
+			place-items: center;
+			touch-action: manipulation;
 
 			&:hover {
 				background: hsl(from var(--c--main--text) h s l / 0.15);
