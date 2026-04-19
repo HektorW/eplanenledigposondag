@@ -4,6 +4,38 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width" />
+		<meta name="theme-color" content="hsl(207, 100%, 96%)" />
+
+		<!--
+			Runs pre-paint so the stored theme is applied before first render (no flicker).
+			Colors kept in sync with --c--blue--96 / --c--blue--20 by the drift guard in
+			src/lib/theme.test.ts.
+		-->
+		<script>
+			(function () {
+				try {
+					var t = localStorage.getItem('theme');
+					if (t === 'light' || t === 'dark') {
+						document.documentElement.setAttribute('data-theme', t);
+					}
+					var effective =
+						t === 'light' || t === 'dark'
+							? t
+							: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+								? 'dark'
+								: 'light';
+					var meta = document.querySelector('meta[name="theme-color"]');
+					if (meta) {
+						meta.setAttribute(
+							'content',
+							effective === 'dark' ? 'hsl(207, 65%, 20%)' : 'hsl(207, 100%, 96%)'
+						);
+					}
+				} catch (e) {
+					/* localStorage unavailable */
+				}
+			})();
+		</script>
 
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
