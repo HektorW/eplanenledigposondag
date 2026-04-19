@@ -1,36 +1,69 @@
-# SvelteKit Demo app
+# Söndagsboll ⚽️
 
-The official demo app for SvelteKit, hosted on Vercel.
+SvelteKit app. Check if Sorgenfri football pitch free on Sunday (or next 10 days).
 
-## Deploy Your Own
+Scrapes `malmo.rbok.se` with Puppeteer + `@sparticuz/chromium-min`. Caches results in Upstash Redis. Overlays midday weather from met.no.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fvercel%2Ftree%2Fmain%2Fexamples%2Fsveltekit-1&project-name=sveltekit-vercel&repository-name=sveltekit-vercel&demo-title=SvelteKit%20%2B%20Vercel&demo-url=https%3A%2F%2Fsveltekit-template.vercel.app%2F)
+## How it works
 
-_Live Example: https://sveltekit-1-template.vercel.app_
+1. `?date=YYYY-MM-DD` query param picks target date. Missing/invalid → next Sunday. Constrained to today through `MAX_FUTURE_DAYS` (10).
+2. `loadBookings` reads Redis cache. Fresh (<5 min) → serve. Stale or missing → stream fresh scrape to client.
+3. Scraper drives Blazor calendar in 5 steps (`src/lib/server/scrapeBlazor/step*.ts`).
+4. Weather fetched in parallel from met.no locationforecast API.
 
-## Developing
+## Stack
 
-Once you've created a project and installed dependencies with `pnpm install`, start a development server:
+- SvelteKit 2 + Svelte 5 (runes)
+- Vite 8, Vitest 4
+- Puppeteer-core + chromium-min (Vercel-compatible)
+- Upstash Redis (optional — falls back to in-memory Map)
+- pnpm 10, Node >=24
 
-```bash
-pnpm run dev
-
-# or start the server and open the app in a new browser tab
-pnpm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
+## Dev
 
 ```bash
-pnpm run build
+pnpm install
+pnpm dev
 ```
 
-You can preview the production build with `pnpm run preview`.
+Optional env for persistent cache:
 
-## Speed Insights
+```
+UPSTASH_KV_REST_API_URL=...
+UPSTASH_KV_REST_API_TOKEN=...
+```
 
-Once deployed on Vercel, you can benefit from [Speed Insights](https://vercel.com/docs/concepts/speed-insights) simply by navigating to Vercel's dashboard, clicking on the 'Speed Insights' tab, and enabling the product.
+No env → in-memory cache, works fine locally.
 
-You will get data once your application will be re-deployed and will receive visitors.
+## Scripts
+
+| Script               | What                                 |
+| -------------------- | ------------------------------------ |
+| `pnpm dev`           | Vite dev server                      |
+| `pnpm build`         | Production build                     |
+| `pnpm preview`       | Preview prod build                   |
+| `pnpm check`         | svelte-check type check              |
+| `pnpm lint`          | ESLint                               |
+| `pnpm format`        | Prettier write                       |
+| `pnpm test`          | All vitest projects                  |
+| `pnpm test:unit`     | Unit tests only                      |
+| `pnpm test:scraping` | Live scraping tests (hits real site) |
+
+## Layout
+
+```
+src/
+  routes/              +page.server.ts loads data, +page.svelte renders
+  lib/
+    components/        Calendar, Bookings, loaders, freshness indicator
+    server/
+      cache.ts         Redis + memory cache with stale-while-revalidate
+      scrapeBlazor/    5-step Puppeteer scraper
+      weather/         met.no fetch
+    utils.ts           parseTargetDate, getNextSundayDate, time formatting
+    weather/           midday weather picker + labels
+```
+
+## Deploy
+
+Vercel. `@sveltejs/adapter-auto` picks Vercel adapter. Set Upstash env vars in project settings.
