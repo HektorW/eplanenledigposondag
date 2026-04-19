@@ -66,6 +66,7 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="click-target"
+			data-testid="court-click-target-{court}"
 			style:grid-column={COURT_GRID_COLUMN[court]}
 			style:grid-row="2 / -1"
 			onclick={(event) => handleCourtClick(court, event)}

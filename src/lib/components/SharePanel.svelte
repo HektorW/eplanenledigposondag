@@ -104,14 +104,12 @@
 
 	function panelOut(_node: Element) {
 		return {
-			duration: 300,
+			duration: 200,
 			easing: (t: number) => t,
 			css: (t: number) => {
 				const y = (1 - t) * 8;
-				const scale = 0.98 + t * 0.02;
-				const blur = Math.pow(1 - t, 0.7) * 8;
-				const opacity = t * t;
-				return `transform: translateY(${y}px) scale(${scale}); opacity: ${opacity}; filter: blur(${blur}px)`;
+				const blur = (1 - t) * 4;
+				return `transform: translateY(${y}px); opacity: ${t}; filter: blur(${blur}px)`;
 			}
 		};
 	}
@@ -169,11 +167,14 @@
 		{/if}
 
 		<button class="share-panel--share-btn" onclick={share} disabled={sharing}>
-			{#if sharing}
+			<span class="share-panel--share-label" class:is-hidden={sharing}>Dela bild</span>
+			<span
+				class="share-panel--share-label share-panel--share-label-overlay"
+				class:is-hidden={!sharing}
+				aria-hidden={!sharing}
+			>
 				Skapar bild…
-			{:else}
-				Dela bild
-			{/if}
+			</span>
 		</button>
 	</dialog>
 {/if}
@@ -235,7 +236,7 @@
 			}
 
 			&:active {
-				scale: 0.92;
+				scale: 0.96;
 			}
 		}
 
@@ -246,7 +247,8 @@
 
 		&--error {
 			background: hsl(from var(--c--suggestion--background) h s l / 0.15);
-			border-radius: 8px;
+			border-radius: 10px;
+			text-wrap: pretty;
 			color: var(--c--suggestion--background);
 			font-size: 0.85rem;
 			font-weight: 600;
@@ -256,6 +258,7 @@
 		}
 
 		&--share-btn {
+			position: relative;
 			background-color: var(--c--suggestion--background);
 			touch-action: manipulation;
 			border: none;
@@ -276,13 +279,33 @@
 			}
 
 			&:active:not(:disabled) {
-				scale: 0.97;
+				scale: 0.96;
 			}
 
 			&:disabled {
-				opacity: 0.6;
 				cursor: wait;
 			}
+		}
+
+		&--share-label {
+			display: inline-block;
+			transition:
+				opacity 300ms cubic-bezier(0.2, 0, 0, 1),
+				scale 300ms cubic-bezier(0.2, 0, 0, 1),
+				filter 300ms cubic-bezier(0.2, 0, 0, 1);
+
+			&.is-hidden {
+				opacity: 0;
+				scale: 0.25;
+				filter: blur(4px);
+			}
+		}
+
+		&--share-label-overlay {
+			position: absolute;
+			inset: 0;
+			display: grid;
+			place-items: center;
 		}
 	}
 
@@ -312,7 +335,7 @@
 			}
 
 			&:active {
-				scale: 0.9;
+				scale: 0.96;
 			}
 		}
 
