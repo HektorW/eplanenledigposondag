@@ -9,10 +9,12 @@ export type Booking = {
 	additionalInfo?: string | null;
 };
 
+export type Court = 'a' | 'b';
+
 export type TimeSuggestion = {
 	startMinutes: number;
 	durationMinutes: number;
-	court: 'a' | 'b';
+	court: Court;
 };
 
 /** @example "2024-08-15T16:00:00Z" */

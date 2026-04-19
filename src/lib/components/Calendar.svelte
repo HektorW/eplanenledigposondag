@@ -4,10 +4,13 @@
 		CALENDAR_ROWS,
 		CALENDAR_START_MINUTES,
 		CALENDAR_STEP_MINUTES,
+		COURT_GRID_COLUMN,
+		COURT_ID_LIST,
+		COURT_LABEL,
 		DEFAULT_SUGGESTION_DURATION_MINUTES,
 		hasConflict
 	} from '$lib/calendar';
-	import type { Booking, ParsedWeatherTimeEntry, TimeSuggestion } from '$lib/types';
+	import type { Booking, Court, ParsedWeatherTimeEntry, TimeSuggestion } from '$lib/types';
 	import Bookings from './Bookings.svelte';
 	import SuggestedTime from './SuggestedTime.svelte';
 	import TimeAxis from './TimeAxis.svelte';
@@ -20,7 +23,7 @@
 
 	let { bookings, weatherEntries, suggestion = $bindable(null) }: CalendarProps = $props();
 
-	function handleCourtClick(court: 'a' | 'b', event: MouseEvent) {
+	function handleCourtClick(court: Court, event: MouseEvent) {
 		const target = event.currentTarget as HTMLElement;
 		const rect = target.getBoundingClientRect();
 		const parent = target.parentElement;
@@ -51,29 +54,23 @@
 
 <section class:has-suggestion={!!suggestion} style:--row--count={CALENDAR_ROWS}>
 	<header>
-		<h2>Ena halvan</h2>
-		<h2>Andra halvan</h2>
+		{#each COURT_ID_LIST as court (court)}
+			<h2 style:grid-column={COURT_GRID_COLUMN[court]}>{COURT_LABEL[court]}</h2>
+		{/each}
 	</header>
 
 	<TimeAxis {weatherEntries} />
 
-	<!-- Click targets for placing suggestions -->
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="click-target"
-		style:grid-column="2"
-		style:grid-row="2 / -1"
-		onclick={(e) => handleCourtClick('a', e)}
-	></div>
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="click-target"
-		style:grid-column="3"
-		style:grid-row="2 / -1"
-		onclick={(e) => handleCourtClick('b', e)}
-	></div>
+	{#each COURT_ID_LIST as court (court)}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="click-target"
+			style:grid-column={COURT_GRID_COLUMN[court]}
+			style:grid-row="2 / -1"
+			onclick={(event) => handleCourtClick(court, event)}
+		></div>
+	{/each}
 
 	<Bookings {bookings} />
 
@@ -118,14 +115,6 @@
 			font-size: 1rem;
 			font-weight: 700;
 			margin: 0;
-
-			&:first-child {
-				grid-column: 2;
-			}
-
-			&:last-child {
-				grid-column: 3;
-			}
 		}
 	}
 

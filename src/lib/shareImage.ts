@@ -1,3 +1,4 @@
+import { assertNonNullish } from '$lib/assert';
 import {
 	CALENDAR_END_MINUTES,
 	CALENDAR_HOURS,
@@ -5,10 +6,13 @@ import {
 	CALENDAR_ROWS_PER_HOUR,
 	CALENDAR_START_HOUR,
 	CALENDAR_START_MINUTES,
+	COURT_ID_LIST,
+	COURT_LABEL,
+	COURT_RESOURCE_ID,
 	minutesToRowIndex
 } from '$lib/calendar';
-import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
-import type { Booking, TimeSuggestion } from '$lib/types';
+import { fullCourtId } from '$lib/ids';
+import type { Booking, Court, TimeSuggestion } from '$lib/types';
 import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
 
 const SCALE = 2;
@@ -24,9 +28,16 @@ const GRID_Y = COL_HEADER_Y + COL_HEADER_H;
 const TIME_COL_W = 46;
 const COURT_GAP = 8;
 const COURT_W = (W - PAD * 2 - TIME_COL_W - COURT_GAP) / 2;
-const COURT_A_X = PAD + TIME_COL_W;
-const COURT_B_X = COURT_A_X + COURT_W + COURT_GAP;
 const ROW_H = (H - GRID_Y - PAD) / CALENDAR_ROWS;
+
+const COURT_X: Record<Court, number> = COURT_ID_LIST.reduce(
+	(acc, court, index) => {
+		acc[court] = PAD + TIME_COL_W + index * (COURT_W + COURT_GAP);
+		return acc;
+	},
+	{} as Record<Court, number>
+);
+const FULL_COURT_W = COURT_W * 2 + COURT_GAP;
 
 const FONT = 'Montserrat, system-ui, sans-serif';
 
@@ -68,7 +79,8 @@ export async function generateShareImage(params: {
 	const canvas = document.createElement('canvas');
 	canvas.width = W * SCALE;
 	canvas.height = H * SCALE;
-	const ctx = canvas.getContext('2d')!;
+	const ctx = canvas.getContext('2d');
+	assertNonNullish(ctx, 'Failed to get 2d canvas context');
 	ctx.scale(SCALE, SCALE);
 
 	ctx.fillStyle = colors.bg;
@@ -91,8 +103,9 @@ export async function generateShareImage(params: {
 	// Column headers
 	ctx.fillStyle = colors.text;
 	ctx.font = `700 14px ${FONT}`;
-	ctx.fillText('Ena halvan', COURT_A_X + 4, COL_HEADER_Y + 16);
-	ctx.fillText('Andra halvan', COURT_B_X + 4, COL_HEADER_Y + 16);
+	for (const court of COURT_ID_LIST) {
+		ctx.fillText(COURT_LABEL[court], COURT_X[court] + 4, COL_HEADER_Y + 16);
+	}
 
 	// Time axis + grid lines
 	for (let i = 0; i <= CALENDAR_HOURS; i++) {
@@ -108,7 +121,7 @@ export async function generateShareImage(params: {
 		ctx.strokeStyle = colors.gridLine;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
-		ctx.moveTo(COURT_A_X, y);
+		ctx.moveTo(COURT_X.a, y);
 		ctx.lineTo(W - PAD, y);
 		ctx.stroke();
 	}
@@ -123,15 +136,15 @@ export async function generateShareImage(params: {
 		const endRow = minutesToRowIndex(end);
 
 		let x: number, w: number;
-		if (booking.resourceId === halfCourtAId) {
-			x = COURT_A_X;
-			w = COURT_W;
-		} else if (booking.resourceId === halfCourtBId) {
-			x = COURT_B_X;
+		const halfCourt = COURT_ID_LIST.find(
+			(court) => COURT_RESOURCE_ID[court] === booking.resourceId
+		);
+		if (halfCourt) {
+			x = COURT_X[halfCourt];
 			w = COURT_W;
 		} else if (booking.resourceId === fullCourtId) {
-			x = COURT_A_X;
-			w = COURT_W * 2 + COURT_GAP;
+			x = COURT_X.a;
+			w = FULL_COURT_W;
 		} else {
 			continue;
 		}
@@ -161,7 +174,7 @@ export async function generateShareImage(params: {
 	{
 		const startRow = minutesToRowIndex(suggestion.startMinutes);
 		const endRow = minutesToRowIndex(suggestion.startMinutes + suggestion.durationMinutes);
-		const x = suggestion.court === 'a' ? COURT_A_X : COURT_B_X;
+		const x = COURT_X[suggestion.court];
 		const w = COURT_W;
 		const sy = GRID_Y + startRow * ROW_H + 1;
 		const sh = (endRow - startRow) * ROW_H - 2;

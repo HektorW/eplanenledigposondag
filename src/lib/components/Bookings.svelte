@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { minutesToGridRow } from '$lib/calendar';
+	import { COURT_GRID_COLUMN, FULL_COURT_GRID_COLUMN, minutesToGridRow } from '$lib/calendar';
 	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 	import type { Booking } from '$lib/types';
 	import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
@@ -44,9 +44,9 @@
 	{/each}
 {/snippet}
 
-{@render renderBookingEntries(halfCourtAEntries, '2')}
-{@render renderBookingEntries(halfCourtBEntries, '3')}
-{@render renderBookingEntries(fullCourtEntries, '2 / 4')}
+{@render renderBookingEntries(halfCourtAEntries, COURT_GRID_COLUMN.a)}
+{@render renderBookingEntries(halfCourtBEntries, COURT_GRID_COLUMN.b)}
+{@render renderBookingEntries(fullCourtEntries, FULL_COURT_GRID_COLUMN)}
 
 <style lang="scss">
 	@use '../styles/calendar-block' as block;

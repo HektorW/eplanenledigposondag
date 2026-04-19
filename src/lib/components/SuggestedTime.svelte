@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { minutesToGridRow } from '$lib/calendar';
+	import { COURT_GRID_COLUMN, minutesToGridRow } from '$lib/calendar';
 	import type { TimeSuggestion } from '$lib/types';
 	import { print24HourTime } from '$lib/utils';
 
@@ -11,7 +11,7 @@
 
 	const startRow = $derived(minutesToGridRow(suggestion.startMinutes));
 	const endRow = $derived(minutesToGridRow(suggestion.startMinutes + suggestion.durationMinutes));
-	const column = $derived(suggestion.court === 'a' ? '2' : '3');
+	const column = $derived(COURT_GRID_COLUMN[suggestion.court]);
 </script>
 
 <div class="suggestion" style:grid-column={column} style:grid-row="{startRow} / {endRow}">

@@ -2,6 +2,7 @@
 	import {
 		CALENDAR_END_MINUTES,
 		CALENDAR_START_MINUTES,
+		COURT_LABEL,
 		hasConflict,
 		MIN_SUGGESTION_DURATION_MINUTES
 	} from '$lib/calendar';
@@ -22,9 +23,7 @@
 	const endTime = $derived(
 		suggestion ? print24HourTime(suggestion.startMinutes + suggestion.durationMinutes) : ''
 	);
-	const courtLabel = $derived(
-		suggestion ? (suggestion.court === 'a' ? 'Ena halvan' : 'Andra halvan') : ''
-	);
+	const courtLabel = $derived(suggestion ? COURT_LABEL[suggestion.court] : '');
 
 	let sharing = $state(false);
 	let shareError = $state<string | null>(null);
