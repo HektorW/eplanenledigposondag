@@ -1,3 +1,4 @@
+import { Temporal } from '@js-temporal/polyfill';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import {
@@ -37,7 +38,7 @@ function baseProps() {
 	return {
 		suggestion: makeSuggestion(),
 		bookings: [] as Booking[],
-		date: new Date('2026-04-19T09:00:00Z')
+		date: Temporal.PlainDate.from('2026-04-19')
 	};
 }
 

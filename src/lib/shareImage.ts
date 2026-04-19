@@ -1,3 +1,4 @@
+import type { Temporal } from '@js-temporal/polyfill';
 import { assertNonNullish } from '$lib/assert';
 import {
 	CALENDAR_END_MINUTES,
@@ -13,7 +14,7 @@ import {
 } from '$lib/calendar';
 import { fullCourtId } from '$lib/ids';
 import type { Booking, Court, TimeSuggestion } from '$lib/types';
-import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
+import { formattedTimeToMinutes, getBollTitle, print24HourTime } from '$lib/utils';
 
 const SCALE = 2;
 const W = 460;
@@ -65,7 +66,7 @@ function getThemeColors() {
 }
 
 export async function generateShareImage(params: {
-	date: Date;
+	date: Temporal.PlainDate;
 	bookings: Booking[];
 	suggestion: TimeSuggestion;
 }): Promise<Blob> {
@@ -89,11 +90,11 @@ export async function generateShareImage(params: {
 	// Header
 	ctx.fillStyle = colors.text;
 	ctx.font = `900 30px ${FONT}`;
-	ctx.fillText('Söndagsboll ⚽', PAD, HEADER_Y + 30);
+	ctx.fillText(getBollTitle(date), PAD, HEADER_Y + 30);
 
 	ctx.fillStyle = colors.textLight;
 	ctx.font = `400 16px ${FONT}`;
-	const dateStr = date.toLocaleDateString('sv-SE', {
+	const dateStr = date.toLocaleString('sv-SE', {
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long'

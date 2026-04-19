@@ -9,12 +9,13 @@
 	import type { Booking, TimeSuggestion } from '$lib/types';
 	import { print24HourTime } from '$lib/utils';
 	import { generateShareImage } from '$lib/shareImage';
+	import type { Temporal } from '@js-temporal/polyfill';
 	import { cubicOut } from 'svelte/easing';
 
 	type Props = {
 		suggestion: TimeSuggestion | null;
 		bookings: Booking[];
-		date: Date;
+		date: Temporal.PlainDate;
 	};
 
 	let { suggestion = $bindable(), bookings, date }: Props = $props();
@@ -62,13 +63,15 @@
 		if (event.key === 'Escape' && suggestion) close();
 	}
 
+	const SHARE_FILENAME = 'tidsforslag.png';
+
 	async function share() {
 		if (!suggestion) return;
 		sharing = true;
 		shareError = null;
 		try {
 			const blob = await generateShareImage({ date, bookings, suggestion });
-			const file = new File([blob], 'sondagsboll.png', { type: 'image/png' });
+			const file = new File([blob], SHARE_FILENAME, { type: 'image/png' });
 
 			if (navigator.canShare?.({ files: [file] })) {
 				await navigator.share({ files: [file] });
@@ -76,7 +79,7 @@
 				const url = URL.createObjectURL(blob);
 				const a = document.createElement('a');
 				a.href = url;
-				a.download = 'sondagsboll.png';
+				a.download = SHARE_FILENAME;
 				a.click();
 				URL.revokeObjectURL(url);
 			}
