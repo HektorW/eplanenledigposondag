@@ -1,5 +1,6 @@
 import { assertNonNullish } from '$lib/assert';
 import { MAX_FUTURE_DAYS } from '$lib/utils';
+import { Temporal } from '@js-temporal/polyfill';
 import type { Page } from 'puppeteer-core';
 import { resourceAndDateRegex } from './constants';
 import { withSelector } from './withElement';
@@ -7,14 +8,14 @@ import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
 
-export async function selectTargetDate(page: Page, targetDate: Date, retryCount = 0) {
+export async function selectTargetDate(page: Page, targetDate: Temporal.PlainDate, retryCount = 0) {
 	if (retryCount > MAX_FUTURE_DAYS) {
 		throw new Error('Max retries reached while selecting target date');
 	}
 
-	const month = targetDate.getMonth() + 1;
-	const day = targetDate.getDate();
-	const dayAbbreviation = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+	const month = targetDate.month;
+	const day = targetDate.day;
+	const dayAbbreviation = targetDate.toLocaleString('en-US', { weekday: 'short' });
 
 	const prefix = (n: number) => (n < 10 ? '0' + n : n);
 	const targetDateStr = `${dayAbbreviation} ${prefix(day)}/${prefix(month)}`;
@@ -61,11 +62,11 @@ async function selectNextDay(page: Page) {
 	});
 }
 
-async function waitForTargetDateBookingsAreVisible(page: Page, targetDate: Date) {
+async function waitForTargetDateBookingsAreVisible(page: Page, targetDate: Temporal.PlainDate) {
 	logger.debug('Waiting for target date bookings to be visible...');
 
-	const targetMonth = targetDate.getMonth() + 1;
-	const targetDay = targetDate.getDate();
+	const targetMonth = targetDate.month;
+	const targetDay = targetDate.day;
 
 	// First check if any events appear within 1500ms.
 	// If none appear, assume it's an empty day and move on.

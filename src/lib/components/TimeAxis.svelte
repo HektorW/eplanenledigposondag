@@ -13,7 +13,7 @@
 
 {#each { length: hours } as _, index (index)}
 	{@const hour = startHour + index}
-	{@const weatherEntry = weatherEntries.find((entry) => entry.date.getHours() === hour)}
+	{@const weatherEntry = weatherEntries.find((entry) => entry.zoned.hour === hour)}
 
 	<div class="time-axis-entry" style:grid-row="{2 + index * 4} / span 4">
 		<div class="hour-container">

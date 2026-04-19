@@ -39,8 +39,10 @@ export type WeatherTimeEntry = {
 	};
 };
 
+import type { Temporal } from '@js-temporal/polyfill';
+
 export type ParsedWeatherTimeEntry = WeatherTimeEntry & {
-	date: Date;
+	zoned: Temporal.ZonedDateTime;
 };
 
 export type WeatherResponseData = {

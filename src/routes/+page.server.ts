@@ -2,10 +2,11 @@ import { loadBookings } from '$lib/server/cache';
 import { createLogger } from '$lib/server/logger';
 import { fetchWeather } from '$lib/server/weather/fetchWeather';
 import { parseTargetDate } from '$lib/utils';
+import type { PageServerLoad } from './$types';
 
 const logger = createLogger('page:server');
 
-export async function load({ url }) {
+export const load: PageServerLoad = async ({ url }) => {
 	const dateParam = url.searchParams.get('date');
 	const { date: targetDate, usedFallback } = parseTargetDate(dateParam);
 
@@ -19,10 +20,10 @@ export async function load({ url }) {
 	]);
 
 	return {
-		date: targetDate,
+		date: targetDate.toString(),
 		bookings,
 		scrapedAt,
 		fresh,
 		weather: weatherResponse
 	};
-}
+};
