@@ -32,8 +32,9 @@ export function getMiddayWeather(
 		.toSorted((a, b) => a.zoned.hour - b.zoned.hour)[0];
 
 	const middayWeatherSymbol =
-		(middayWeatherEntry?.data.next_12_hours ?? middayWeatherEntry?.data.next_6_hours)?.summary
-			?.symbol_code ?? null;
+		middayWeatherEntry?.data.next_12_hours?.summary?.symbol_code ??
+		middayWeatherEntry?.data.next_6_hours?.summary?.symbol_code ??
+		null;
 	const middayWeatherLabel = (middayWeatherSymbol && symbolCodeLabel[middayWeatherSymbol]) ?? null;
 	const middayWeatherTemperature =
 		middayWeatherEntry?.data.instant?.details?.air_temperature ?? null;

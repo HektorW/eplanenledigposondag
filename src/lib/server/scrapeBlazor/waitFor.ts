@@ -1,4 +1,5 @@
 import type { ElementHandle, NodeFor, Page } from 'puppeteer-core';
+import { Temporal } from '@js-temporal/polyfill';
 import { getElementWithText } from './getElementWithText';
 
 type WaitForOptions = {
@@ -13,10 +14,10 @@ export async function waitFor<T>(
 ) {
 	const { maxTime = 2000, pollInterval = 100 } = options;
 
-	const startTime = Date.now();
+	const startTime = Temporal.Now.instant().epochMilliseconds;
 
-	while (Date.now() - startTime < maxTime) {
-		const elapsedTime = Date.now() - startTime;
+	while (Temporal.Now.instant().epochMilliseconds - startTime < maxTime) {
+		const elapsedTime = Temporal.Now.instant().epochMilliseconds - startTime;
 		const result = await pollFunction(elapsedTime);
 
 		if (result) {

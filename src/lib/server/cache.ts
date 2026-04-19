@@ -40,7 +40,8 @@ function cacheKey(targetDate: Temporal.PlainDate): string {
 }
 
 function isStale(entry: CacheEntry): boolean {
-	return Date.now() - new Date(entry.scrapedAt).getTime() > STALE_AFTER_MS;
+	const scrapedAt = Temporal.Instant.from(entry.scrapedAt);
+	return Temporal.Now.instant().epochMilliseconds - scrapedAt.epochMilliseconds > STALE_AFTER_MS;
 }
 
 async function readCache(targetDate: Temporal.PlainDate): Promise<CacheEntry | null> {
@@ -98,7 +99,7 @@ function scrapeAndCache(targetDate: Temporal.PlainDate): Promise<CacheEntry> {
 	logger.info('Scraping for cache...');
 	const promise = (async () => {
 		const bookings = await scrapeCalendar(targetDate);
-		const entry: CacheEntry = { bookings, scrapedAt: new Date().toISOString() };
+		const entry: CacheEntry = { bookings, scrapedAt: Temporal.Now.instant().toString() };
 		await writeCache(targetDate, entry);
 		logger.info('Scrape complete, cached', { count: bookings.length });
 		return entry;
