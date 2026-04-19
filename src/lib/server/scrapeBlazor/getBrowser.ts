@@ -9,74 +9,83 @@ const remoteExecutablePath =
 
 const useSystemChrome = process.env.NODE_ENV !== 'production';
 let sharedBrowser: Browser | null = null;
+let launchPromise: Promise<Browser> | null = null;
+let activeUsers = 0;
 
 type BrowserOptions = Pick<LaunchOptions, 'defaultViewport' | 'headless'>;
 
-export async function getBrowser(options?: BrowserOptions) {
-	if (!sharedBrowser?.connected) {
+export async function getBrowser(options?: BrowserOptions): Promise<Browser> {
+	if (sharedBrowser?.connected) {
+		activeUsers++;
+		return sharedBrowser;
+	}
+
+	if (!launchPromise) {
 		logger.debug('Creating new browser instance', { useSystemChrome });
 
 		const baseArgs = ['--locale=en-US', '--accept-lang=en-US'];
 
-		sharedBrowser = await puppeteerCore.launch({
-			...options,
-			...(useSystemChrome
-				? {
-						channel: 'chrome',
-						args: [...baseArgs, '--disable-dev-shm-usage', '--no-sandbox'],
-						headless: options?.headless ?? true
-					}
-				: {
-						headless: true,
-						args: [...chromium.args, ...baseArgs],
-						executablePath: await chromium.executablePath(remoteExecutablePath),
-						ignoreHTTPSErrors: true
-					})
-		});
+		launchPromise = puppeteerCore
+			.launch({
+				...options,
+				...(useSystemChrome
+					? {
+							channel: 'chrome',
+							args: [...baseArgs, '--disable-dev-shm-usage', '--no-sandbox'],
+							headless: options?.headless ?? true
+						}
+					: {
+							headless: true,
+							args: [...chromium.args, ...baseArgs],
+							executablePath: await chromium.executablePath(remoteExecutablePath),
+							ignoreHTTPSErrors: true
+						})
+			})
+			.then((browser) => {
+				sharedBrowser = browser;
+				return browser;
+			})
+			.finally(() => {
+				launchPromise = null;
+			});
 	}
 
-	return sharedBrowser;
+	const browser = await launchPromise;
+	activeUsers++;
+	return browser;
 }
 
 export async function disposeBrowser() {
-	if (!sharedBrowser) {
-		return;
-	}
+	activeUsers = Math.max(0, activeUsers - 1);
+	if (activeUsers > 0) return;
+	if (!sharedBrowser) return;
+	if (!useSystemChrome) return;
 
-	// const pages = await sharedBrowser.pages();
-	// for (const page of pages) {
-	// 	await page.close();
-	// }
-
-	if (useSystemChrome) {
-		await sharedBrowser.close();
-	}
-}
-
-type Callback<T, TInstance> = (callback: (instance: TInstance) => Promise<T>) => Promise<T>;
-
-export function withBrowser<T>(options?: BrowserOptions): Callback<T, Browser> {
-	return async (callback) => {
-		const browser = await getBrowser(options);
-
-		try {
-			return await callback(browser);
-		} finally {
-			await disposeBrowser();
-		}
-	};
-}
-
-export async function withPage<T>(
-	browser: Browser,
-	callback: (page: Page) => Promise<T>
-): Promise<T> {
-	const page = await browser.newPage();
+	const browser = sharedBrowser;
+	sharedBrowser = null;
 	try {
-		return await callback(page);
-	} finally {
-		await page.close();
+		await browser.close();
+	} catch (error) {
+		logger.debug('Error closing shared browser', error);
 	}
+}
+
+/**
+ * Hard reset for when a scrape times out with Puppeteer still holding the
+ * browser. Nulls the shared refs synchronously so subsequent getBrowser calls
+ * launch fresh; fires close() without awaiting so a hung Chrome doesn't block
+ * us. activeUsers is deliberately left alone — it counts outstanding
+ * withBrowserAndPage invocations and drains naturally when the zombie unwinds.
+ */
+export function forceResetBrowser() {
+	const browser = sharedBrowser;
+	sharedBrowser = null;
+	launchPromise = null;
+	if (!browser) return;
+	logger.warn('Force-resetting shared browser after scrape timeout');
+	browser.close().catch((error) => {
+		logger.debug('Error during forced browser close', error);
+	});
 }
 
 export async function withBrowserAndPage<T>(
@@ -84,12 +93,22 @@ export async function withBrowserAndPage<T>(
 	callback: (browser: Browser, page: Page) => Promise<T>
 ): Promise<T> {
 	const browser = await getBrowser(options);
-	const page = await browser.newPage();
-
 	try {
-		return await callback(browser, page);
+		const page = await browser.newPage();
+		try {
+			return await callback(browser, page);
+		} finally {
+			await closePageSafely(page);
+		}
 	} finally {
-		await page.close();
 		await disposeBrowser();
+	}
+}
+
+async function closePageSafely(page: Page) {
+	try {
+		await page.close();
+	} catch (error) {
+		logger.debug('Error closing page', error);
 	}
 }

@@ -44,6 +44,7 @@
 		"node": ">=24"
 	},
 	"dependencies": {
+		"@js-temporal/polyfill": "^0.5.1",
 		"@sparticuz/chromium-min": "^147.0.0",
 		"@upstash/redis": "^1.37.0",
 		"puppeteer-core": "^24.40.0",

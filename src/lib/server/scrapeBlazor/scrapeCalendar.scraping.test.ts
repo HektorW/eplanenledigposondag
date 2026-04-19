@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scrapeCalendar } from './scrapeCalendar';
-import { getNextSundayDate } from '$lib/utils';
+import { getNextSundayDate, todayInAppTz } from '$lib/utils';
 import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 
 const validResourceIds = [fullCourtId, halfCourtAId, halfCourtBId];
@@ -32,10 +32,9 @@ describe('scrapeCalendar', () => {
 	});
 
 	it('scrapes a non-Sunday date', async () => {
-		const tomorrow = new Date();
-		tomorrow.setDate(tomorrow.getDate() + 1);
+		const tomorrow = todayInAppTz().add({ days: 1 });
 		// Skip if tomorrow is Sunday — already covered above
-		if (tomorrow.getDay() === 0) return;
+		if (tomorrow.dayOfWeek === 7) return;
 
 		const result = await scrapeCalendar(tomorrow);
 		expectValidBookingList(result);

@@ -24,8 +24,8 @@
 {#snippet renderBookingEntries(entries: Booking[], column: string)}
 	{#each entries as entry (entry.bookingId)}
 		{@const minutes = getMinutes(entry)}
-		{@const startRow = minutes.start / 15 - 34}
-		{@const endRow = minutes.end / 15 - 34}
+		{@const startRow = Math.round(minutes.start / 15) - 34}
+		{@const endRow = Math.round(minutes.end / 15) - 34}
 
 		<article
 			class="booking-entry"

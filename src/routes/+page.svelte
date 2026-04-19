@@ -1,28 +1,39 @@
 <script lang="ts">
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
+	import DateStepper from '$lib/components/DateStepper.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
 	import type { Booking } from '$lib/types';
+	import { getBollTitle } from '$lib/utils';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
-	import { tick, onMount } from 'svelte';
+	import { Temporal } from '@js-temporal/polyfill';
+	import { tick } from 'svelte';
 	import { browser } from '$app/environment';
 
 	const { data } = $props();
 
-	const middayWeather = $derived(getMiddayWeather(data.weather, new Date(data.date)));
-	const targetDate = $derived(new Date(data.date));
+	const targetDate = $derived(Temporal.PlainDate.from(data.date));
+	const bollTitle = $derived(getBollTitle(targetDate));
+	const middayWeather = $derived(getMiddayWeather(data.weather, targetDate));
 	const loadingMessageList = $derived(buildLoadingMessageList(middayWeather));
 
 	let freshResult: { bookings: Booking[]; scrapedAt: string } | null = $state(null);
 	let scrapeError: unknown = $state(null);
+	let settled = $state(false);
 
 	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
 	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
-	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError);
+	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError && !settled);
 
-	async function applyFreshResult(result: { bookings: Booking[]; scrapedAt: string }) {
+	async function applyFreshResult(
+		result: { bookings: Booking[]; scrapedAt: string },
+		signal: { cancelled: boolean }
+	) {
+		if (signal.cancelled) return;
+
 		const doUpdate = async () => {
+			if (signal.cancelled) return;
 			freshResult = result;
 			await tick();
 		};
@@ -34,14 +45,44 @@
 		}
 	}
 
-	onMount(() => {
-		if (data.fresh) {
-			data.fresh
-				.then((result: { bookings: Booking[]; scrapedAt: string }) => applyFreshResult(result))
-				.catch((error: unknown) => {
-					scrapeError = error;
-				});
-		}
+	$effect(() => {
+		const pending = data.fresh;
+
+		freshResult = null;
+		scrapeError = null;
+		settled = false;
+
+		if (!pending) return;
+
+		const signal = { cancelled: false };
+		const FRESH_TIMEOUT_MS = 45_000;
+		const timeoutId = setTimeout(() => {
+			if (signal.cancelled) return;
+			scrapeError = new Error('Hämtningen tog för lång tid. Pröva att ladda om sidan.');
+		}, FRESH_TIMEOUT_MS);
+
+		pending
+			.then((result) => {
+				clearTimeout(timeoutId);
+				if (signal.cancelled) return;
+				if ('preempted' in result) {
+					// Preempt means a newer scrape took the queue slot. Our cached
+					// bookings stay accurate — clear the refreshing state so the
+					// spinner doesn't spin forever.
+					settled = true;
+					return;
+				}
+				applyFreshResult(result, signal);
+			})
+			.catch((error: unknown) => {
+				clearTimeout(timeoutId);
+				if (!signal.cancelled) scrapeError = error;
+			});
+
+		return () => {
+			signal.cancelled = true;
+			clearTimeout(timeoutId);
+		};
 	});
 </script>
 
@@ -50,14 +91,9 @@
 </svelte:head>
 
 <main>
-	<h1 class="title">Söndagsboll ⚽️</h1>
+	<h1 class="title">{bollTitle}</h1>
 	<p class="meta">
-		<time datetime={targetDate.toDateString()}
-			>{targetDate.toLocaleDateString('sv-SE', {
-				day: 'numeric',
-				month: 'long'
-			})}</time
-		>
+		<DateStepper date={targetDate} />
 		{#if middayWeather.middayWeatherEntry}
 			&nbsp;|&nbsp;
 			<img
