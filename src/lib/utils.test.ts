@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Temporal } from '@js-temporal/polyfill';
 import {
 	print24HourTime,
@@ -8,7 +8,8 @@ import {
 	canStepToPrevDay,
 	canStepToNextDay,
 	getBollTitle,
-	MAX_FUTURE_DAYS
+	MAX_FUTURE_DAYS,
+	formatScrapedAt
 } from './utils';
 
 describe('print24HourTime', () => {
@@ -212,5 +213,69 @@ describe('formattedTimeToMinutes', () => {
 		expect(formattedTimeToMinutes('1:00')).toBe(60);
 		expect(formattedTimeToMinutes('12:30')).toBe(750);
 		expect(formattedTimeToMinutes('23:59')).toBe(1439);
+	});
+});
+
+describe('formatScrapedAt', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('returns "just nu" for less than 1 minute ago', () => {
+		vi.useFakeTimers();
+		const now = new Date('2025-01-12T12:00:00Z');
+		vi.setSystemTime(now);
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('just nu');
+		expect(formatScrapedAt('2025-01-12T11:59:30Z')).toBe('just nu');
+	});
+
+	it('returns "1 minut sedan" for exactly 1 minute ago', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-12T12:01:00Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('1 minut sedan');
+	});
+
+	it('returns minutes for 2-59 minutes ago', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-12T12:05:00Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('5 minuter sedan');
+	});
+
+	it('returns "1 timme sedan" for exactly 1 hour ago', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-12T13:00:00Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('1 timme sedan');
+	});
+
+	it('returns hours for 2-23 hours ago', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-12T15:00:00Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('3 timmar sedan');
+	});
+
+	it('returns "1 dag sedan" for exactly 1 day ago', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-13T12:00:00Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('1 dag sedan');
+	});
+
+	it('returns days for multiple days ago', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-15T12:00:00Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('3 dagar sedan');
+	});
+
+	it('returns 59 minutes for just under 1 hour', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-01-12T12:59:30Z'));
+
+		expect(formatScrapedAt('2025-01-12T12:00:00Z')).toBe('59 minuter sedan');
 	});
 });

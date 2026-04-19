@@ -34,16 +34,17 @@ export function buildLoadingMessageList(
 		middayWeatherLabel: string | null;
 	} | null
 ): LoadingMessage[] {
-	const weatherMessageList: LoadingMessage[] = weather?.middayWeatherSymbol
-		? [
-				{
-					text: `Ser ut att bli ${weather.middayWeatherLabel}`,
-					imageUrl: `/weather-icons/${weather.middayWeatherSymbol}.png`
-				}
-			]
-		: weather?.middayWeatherLabel
-			? [`Ser ut att bli ${weather.middayWeatherLabel}`]
-			: [];
+	const weatherMessageList: LoadingMessage[] =
+		weather?.middayWeatherSymbol && weather.middayWeatherLabel
+			? [
+					{
+						text: `Ser ut att bli ${weather.middayWeatherLabel}`,
+						imageUrl: `/weather-icons/${weather.middayWeatherSymbol}.png`
+					}
+				]
+			: weather?.middayWeatherLabel
+				? [`Ser ut att bli ${weather.middayWeatherLabel}`]
+				: [];
 
 	return [
 		'Letar efter lediga tider...',
