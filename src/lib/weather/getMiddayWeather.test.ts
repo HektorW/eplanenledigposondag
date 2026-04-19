@@ -1,9 +1,20 @@
 import { describe, it, expect } from 'vitest';
+import { Temporal } from '@js-temporal/polyfill';
 import { getMiddayWeather } from './getMiddayWeather';
 import type { WeatherResponseData, WeatherTimeEntry } from '$lib/types';
 
 function localTime(day: number, hour: number): string {
-	return new Date(2025, 0, day, hour, 0, 0).toISOString();
+	return Temporal.PlainDateTime.from({
+		year: 2025,
+		month: 1,
+		day,
+		hour,
+		minute: 0,
+		second: 0
+	})
+		.toZonedDateTime('Europe/Stockholm')
+		.toInstant()
+		.toString();
 }
 
 function createWeatherEntry(
@@ -37,7 +48,7 @@ function createWeatherData(timeseries: WeatherTimeEntry[]): WeatherResponseData 
 }
 
 describe('getMiddayWeather', () => {
-	const targetDate = new Date(2025, 0, 12); // Sunday January 12, 2025
+	const targetDate = Temporal.PlainDate.from('2025-01-12'); // Sunday January 12, 2025
 
 	it('returns empty/null values when weather is null', () => {
 		const result = getMiddayWeather(null, targetDate);
@@ -71,7 +82,7 @@ describe('getMiddayWeather', () => {
 		const result = getMiddayWeather(weather, targetDate);
 
 		expect(result.targetDateWeatherEntryList).toHaveLength(2);
-		expect(result.targetDateWeatherEntryList.every((e) => e.date.getDate() === 12)).toBe(true);
+		expect(result.targetDateWeatherEntryList.every((e) => e.zoned.day === 12)).toBe(true);
 	});
 
 	it('selects midday entry between 11:00 and 14:00 with next_12_hours', () => {
@@ -84,7 +95,7 @@ describe('getMiddayWeather', () => {
 		const result = getMiddayWeather(weather, targetDate);
 
 		expect(result.middayWeatherEntry).toBeDefined();
-		expect(result.middayWeatherEntry!.date.getHours()).toBe(12);
+		expect(result.middayWeatherEntry!.zoned.hour).toBe(12);
 		expect(result.middayWeatherSymbol).toBe('clearsky_day');
 		expect(result.middayWeatherTemperature).toBe(5);
 	});
@@ -97,7 +108,7 @@ describe('getMiddayWeather', () => {
 
 		const result = getMiddayWeather(weather, targetDate);
 
-		expect(result.middayWeatherEntry!.date.getHours()).toBe(11);
+		expect(result.middayWeatherEntry!.zoned.hour).toBe(11);
 		expect(result.middayWeatherSymbol).toBe('fair_day');
 	});
 

@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-svelte';
 import { expect, test, describe } from 'vitest';
+import { Temporal } from '@js-temporal/polyfill';
 import TimeAxis from './TimeAxis.svelte';
 import type { ParsedWeatherTimeEntry } from '$lib/types';
 
@@ -14,10 +15,17 @@ function createWeatherEntry(
 		precipitationAmount?: number;
 	} = {}
 ): ParsedWeatherTimeEntry {
-	const date = new Date(2025, 0, 12, hour, 0, 0);
+	const zoned = Temporal.PlainDateTime.from({
+		year: 2025,
+		month: 1,
+		day: 12,
+		hour,
+		minute: 0,
+		second: 0
+	}).toZonedDateTime('Europe/Stockholm');
 	return {
-		time: date.toISOString(),
-		date,
+		time: zoned.toInstant().toString(),
+		zoned,
 		data: {
 			instant:
 				options.temperature != null

@@ -11,7 +11,7 @@ vi.mock('$app/environment', () => ({
 }));
 
 type PageData = {
-	date: Date;
+	date: string;
 	bookings: Booking[] | null;
 	scrapedAt: string | null;
 	fresh: Promise<{ bookings: Booking[]; scrapedAt: string }> | null;
@@ -20,7 +20,7 @@ type PageData = {
 
 function createPageData(overrides: Partial<PageData> = {}): PageData {
 	return {
-		date: new Date('2025-01-12T12:00:00Z'),
+		date: '2025-01-12',
 		bookings: [],
 		scrapedAt: '2025-01-12T12:00:00Z',
 		fresh: null,
@@ -38,7 +38,7 @@ describe('+page.svelte', () => {
 
 	test('renders the date in Swedish locale', async () => {
 		const screen = render(Page, {
-			data: createPageData({ date: new Date('2025-01-12T12:00:00Z') })
+			data: createPageData({ date: '2025-01-12' })
 		});
 
 		// Wait for the page to render before reading DOM

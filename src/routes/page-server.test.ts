@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { Temporal } from '@js-temporal/polyfill';
 import type { Booking } from '$lib/types';
 
 vi.mock('$lib/server/cache', () => ({
@@ -17,6 +18,7 @@ const mockLoadBookings = vi.mocked(loadBookings);
 const mockFetchWeather = vi.mocked(fetchWeather);
 
 type LoadEvent = Parameters<typeof load>[0];
+type LoadResult = Exclude<Awaited<ReturnType<typeof load>>, void>;
 
 function makeEvent(dateParam: string | null = null): LoadEvent {
 	const url = new URL('http://localhost/');
@@ -24,6 +26,12 @@ function makeEvent(dateParam: string | null = null): LoadEvent {
 		url.searchParams.set('date', dateParam);
 	}
 	return { url } as unknown as LoadEvent;
+}
+
+async function runLoad(event: LoadEvent): Promise<LoadResult> {
+	const result = await load(event);
+	if (!result) throw new Error('load returned void');
+	return result as LoadResult;
 }
 
 describe('+page.server.ts load', () => {
@@ -44,29 +52,27 @@ describe('+page.server.ts load', () => {
 	});
 
 	it('defaults to next Sunday when date param is missing', async () => {
-		const result = await load(makeEvent());
+		const result = await runLoad(makeEvent());
 
-		expect(result.date).toBeInstanceOf(Date);
-		expect(result.date.getDay()).toBe(0);
+		expect(typeof result.date).toBe('string');
+		expect(Temporal.PlainDate.from(result.date).dayOfWeek).toBe(7);
 		const passedDate = mockLoadBookings.mock.calls[0][0];
-		expect(passedDate.getDay()).toBe(0);
+		expect(passedDate.dayOfWeek).toBe(7);
 	});
 
 	it('uses the date param when it is a valid date within range', async () => {
 		// System time is frozen at 2025-01-10, so 2025-01-13 is 3 days ahead
-		const result = await load(makeEvent('2025-01-13'));
+		const result = await runLoad(makeEvent('2025-01-13'));
 
-		expect(result.date.getFullYear()).toBe(2025);
-		expect(result.date.getMonth()).toBe(0);
-		expect(result.date.getDate()).toBe(13);
+		expect(result.date).toBe('2025-01-13');
 		expect(mockLoadBookings).toHaveBeenCalledOnce();
 	});
 
 	it('falls back to the default when date param is invalid', async () => {
-		const result = await load(makeEvent('not-a-date'));
+		const result = await runLoad(makeEvent('not-a-date'));
 
 		// Falls back to next Sunday
-		expect(result.date.getDay()).toBe(0);
+		expect(Temporal.PlainDate.from(result.date).dayOfWeek).toBe(7);
 	});
 
 	it('passes bookings and scrapedAt from cache through to the page', async () => {
@@ -85,7 +91,7 @@ describe('+page.server.ts load', () => {
 			fresh: null
 		});
 
-		const result = await load(makeEvent());
+		const result = await runLoad(makeEvent());
 
 		expect(result.bookings).toBe(bookings);
 		expect(result.scrapedAt).toBe('2025-01-12T12:00:00Z');
@@ -102,13 +108,13 @@ describe('+page.server.ts load', () => {
 			fresh: freshPromise
 		});
 
-		const result = await load(makeEvent());
+		const result = await runLoad(makeEvent());
 
 		expect(result.fresh).toBe(freshPromise);
 	});
 
 	it('returns null fresh when cache is fresh', async () => {
-		const result = await load(makeEvent());
+		const result = await runLoad(makeEvent());
 
 		expect(result.fresh).toBeNull();
 	});
@@ -129,7 +135,7 @@ describe('+page.server.ts load', () => {
 		};
 		mockFetchWeather.mockResolvedValue(weatherData);
 
-		const result = await load(makeEvent());
+		const result = await runLoad(makeEvent());
 
 		expect(result.weather).toBe(weatherData);
 	});
