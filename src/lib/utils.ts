@@ -118,9 +118,9 @@ export function getBollTitle(date: Temporal.PlainDate): string {
 }
 
 export function formatScrapedAt(isoString: string): string {
-	const date = new Date(isoString);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
+	const instant = Temporal.Instant.from(isoString);
+	const now = Temporal.Now.instant();
+	const diffMs = now.epochMilliseconds - instant.epochMilliseconds;
 	const diffMin = Math.floor(diffMs / 60000);
 
 	if (diffMin < 1) return 'just nu';

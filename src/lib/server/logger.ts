@@ -1,3 +1,5 @@
+import { Temporal } from '@js-temporal/polyfill';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'log';
 
 const logLevels: Record<LogLevel, number> = {
@@ -17,7 +19,7 @@ export function createLogger(name: string) {
 	}
 
 	function formatMessage(level: LogLevel): string {
-		return `[${new Date().toISOString()}] [${name}] [${level.toUpperCase()}]:`;
+		return `[${Temporal.Now.instant().toString()}] [${name}] [${level.toUpperCase()}]:`;
 	}
 
 	return {

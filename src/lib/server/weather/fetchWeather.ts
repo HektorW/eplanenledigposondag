@@ -1,4 +1,5 @@
 import type { WeatherResponseData } from '$lib/types';
+import { Temporal } from '@js-temporal/polyfill';
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -20,14 +21,17 @@ async function fetchFresh(): Promise<WeatherResponseData | null> {
 }
 
 export async function fetchWeather() {
-	if (cached && cached.expiresAt > Date.now()) {
+	if (cached && cached.expiresAt > Temporal.Now.instant().epochMilliseconds) {
 		return cached.data;
 	}
 
 	inFlight ??= fetchFresh()
 		.then((data) => {
 			if (data !== null) {
-				cached = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+				cached = {
+					data,
+					expiresAt: Temporal.Now.instant().epochMilliseconds + CACHE_TTL_MS
+				};
 			}
 			return data;
 		})

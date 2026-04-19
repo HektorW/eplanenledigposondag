@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { formatScrapedAt } from '$lib/utils';
+	import { APP_TIME_ZONE, formatScrapedAt } from '$lib/utils';
+	import { Temporal } from '@js-temporal/polyfill';
 
 	type FreshnessIndicatorProps = {
 		scrapedAt: string;
@@ -11,7 +12,7 @@
 	const formattedTime = $derived(formatScrapedAt(scrapedAt));
 
 	const absoluteTime = $derived(
-		new Date(scrapedAt).toLocaleString('sv-SE', {
+		Temporal.Instant.from(scrapedAt).toZonedDateTimeISO(APP_TIME_ZONE).toLocaleString('sv-SE', {
 			year: 'numeric',
 			month: 'long',
 			day: 'numeric',
