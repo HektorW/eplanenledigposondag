@@ -1,6 +1,28 @@
-<slot></slot>
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
+
+	let { children }: { children: Snippet } = $props();
+</script>
+
+<div class="theme-toggle-slot">
+	<ThemeSwitcher />
+</div>
+
+{@render children()}
 
 <style lang="scss">
+	@mixin dark-theme {
+		--c--main--background: var(--c--blue--20);
+		--c--main--text: var(--c--blue--96);
+
+		--c--focus--outline: var(--c--blue--96);
+		--c--surface--raised: var(--c--blue--28);
+
+		--c--booking--background: var(--c--blue--35);
+		--c--booking--text: var(--c--white--100);
+	}
+
 	:root {
 		//
 		// Colors base
@@ -40,23 +62,22 @@
 
 		--grid-columns: 4em 1fr 1fr;
 
-		@media (prefers-color-scheme: dark) {
-			--c--main--background: var(--c--blue--20);
-			--c--main--text: var(--c--blue--96);
-
-			--c--focus--outline: var(--c--blue--96);
-			--c--surface--raised: var(--c--blue--28);
-
-			--c--booking--background: var(--c--blue--35);
-			--c--booking--text: var(--c--white--100);
-		}
-
 		@media screen and (max-width: 355px) {
 			font-size: 14px;
 		}
 
 		@media screen and (min-width: 700px) {
 			font-size: 20px;
+		}
+	}
+
+	:root[data-theme='dark'] {
+		@include dark-theme;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']):not([data-theme='dark']) {
+			@include dark-theme;
 		}
 	}
 
@@ -94,5 +115,17 @@
 		font-style: normal;
 
 		margin: 0;
+	}
+
+	:global(:root.theme-switching::view-transition-old(root)),
+	:global(:root.theme-switching::view-transition-new(root)) {
+		animation-duration: 180ms;
+	}
+
+	.theme-toggle-slot {
+		position: fixed;
+		top: max(0.75rem, env(safe-area-inset-top));
+		right: max(0.75rem, env(safe-area-inset-right));
+		z-index: 10;
 	}
 </style>
