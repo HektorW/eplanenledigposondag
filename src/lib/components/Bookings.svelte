@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { COURT_GRID_COLUMN, FULL_COURT_GRID_COLUMN, minutesToGridRow } from '$lib/calendar';
 	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 	import type { Booking } from '$lib/types';
 	import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
@@ -24,8 +25,8 @@
 {#snippet renderBookingEntries(entries: Booking[], column: string)}
 	{#each entries as entry (entry.bookingId)}
 		{@const minutes = getMinutes(entry)}
-		{@const startRow = Math.round(minutes.start / 15) - 34}
-		{@const endRow = Math.round(minutes.end / 15) - 34}
+		{@const startRow = minutesToGridRow(minutes.start)}
+		{@const endRow = minutesToGridRow(minutes.end)}
 
 		<article
 			class="booking-entry"
@@ -43,30 +44,27 @@
 	{/each}
 {/snippet}
 
-{@render renderBookingEntries(halfCourtAEntries, '2')}
-{@render renderBookingEntries(halfCourtBEntries, '3')}
-{@render renderBookingEntries(fullCourtEntries, '2 / 4')}
+{@render renderBookingEntries(halfCourtAEntries, COURT_GRID_COLUMN.a)}
+{@render renderBookingEntries(halfCourtBEntries, COURT_GRID_COLUMN.b)}
+{@render renderBookingEntries(fullCourtEntries, FULL_COURT_GRID_COLUMN)}
 
 <style lang="scss">
+	@use '../styles/calendar-block' as block;
+
 	.booking-entry {
+		@include block.base;
+
 		background-color: var(--c--booking--background);
 		color: var(--c--booking--text);
 		box-shadow: var(--box-shadow--booking);
 
-		border-radius: var(--border-radius--100);
-
-		padding: 0.75rem;
-
 		&--name {
-			font-size: 0.8rem;
+			@include block.primary;
 			font-weight: 600;
-			margin: 0;
 		}
 
 		&--time {
-			font-size: 0.7rem;
-			font-weight: 400;
-			margin-top: 0.2em;
+			@include block.secondary;
 		}
 	}
 </style>

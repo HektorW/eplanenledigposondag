@@ -1,32 +1,83 @@
 <script lang="ts">
-	import type { Booking, ParsedWeatherTimeEntry } from '$lib/types';
+	import {
+		CALENDAR_END_MINUTES,
+		CALENDAR_ROWS,
+		CALENDAR_START_MINUTES,
+		CALENDAR_STEP_MINUTES,
+		COURT_GRID_COLUMN,
+		COURT_ID_LIST,
+		COURT_LABEL,
+		DEFAULT_SUGGESTION_DURATION_MINUTES,
+		hasConflict
+	} from '$lib/calendar';
+	import type { Booking, Court, ParsedWeatherTimeEntry, TimeSuggestion } from '$lib/types';
 	import Bookings from './Bookings.svelte';
-	// import SuggestedTime from './SuggestedTime.svelte';
+	import SuggestedTime from './SuggestedTime.svelte';
 	import TimeAxis from './TimeAxis.svelte';
 
 	type CalendarProps = {
 		bookings: Booking[];
 		weatherEntries: ParsedWeatherTimeEntry[];
+		suggestion?: TimeSuggestion | null;
 	};
 
-	const { bookings, weatherEntries }: CalendarProps = $props();
+	let { bookings, weatherEntries, suggestion = $bindable(null) }: CalendarProps = $props();
 
-	function onGridClick(_event: MouseEvent) {}
+	function handleCourtClick(court: Court, event: MouseEvent) {
+		const target = event.currentTarget as HTMLElement;
+		const rect = target.getBoundingClientRect();
+		const parent = target.parentElement;
+		const gap = parent ? parseFloat(getComputedStyle(parent).rowGap) || 0 : 0;
+		const rowHeight = (rect.height - (CALENDAR_ROWS - 1) * gap) / CALENDAR_ROWS;
+		const y = event.clientY - rect.top;
+		const rowIndex = Math.max(0, Math.min(CALENDAR_ROWS - 1, Math.floor(y / (rowHeight + gap))));
+		const clickedMinutes = CALENDAR_START_MINUTES + rowIndex * CALENDAR_STEP_MINUTES;
+
+		const halfDurationSteps = Math.floor(
+			DEFAULT_SUGGESTION_DURATION_MINUTES / 2 / CALENDAR_STEP_MINUTES
+		);
+		const centered = clickedMinutes - halfDurationSteps * CALENDAR_STEP_MINUTES;
+		const clamped = Math.max(
+			CALENDAR_START_MINUTES,
+			Math.min(centered, CALENDAR_END_MINUTES - DEFAULT_SUGGESTION_DURATION_MINUTES)
+		);
+
+		if (hasConflict(bookings, court, clamped, DEFAULT_SUGGESTION_DURATION_MINUTES)) return;
+
+		suggestion = {
+			startMinutes: clamped,
+			durationMinutes: DEFAULT_SUGGESTION_DURATION_MINUTES,
+			court
+		};
+	}
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<section onclick={onGridClick}>
+<section class:has-suggestion={!!suggestion} style:--row--count={CALENDAR_ROWS}>
 	<header>
-		<h2>Ena halvan</h2>
-		<h2>Andra halvan</h2>
+		{#each COURT_ID_LIST as court (court)}
+			<h2 style:grid-column={COURT_GRID_COLUMN[court]}>{COURT_LABEL[court]}</h2>
+		{/each}
 	</header>
 
 	<TimeAxis {weatherEntries} />
 
+	{#each COURT_ID_LIST as court (court)}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="click-target"
+			data-testid="court-click-target-{court}"
+			style:grid-column={COURT_GRID_COLUMN[court]}
+			style:grid-row="2 / -1"
+			onclick={(event) => handleCourtClick(court, event)}
+		></div>
+	{/each}
+
 	<Bookings {bookings} />
 
-	<!-- <SuggestedTime /> -->
+	{#if suggestion}
+		<SuggestedTime {suggestion} />
+	{/if}
 </section>
 
 <style lang="scss">
@@ -34,7 +85,6 @@
 		--columns: 4.5rem 1fr 1fr;
 
 		--row--height: 1.1rem;
-		--row--count: 40; // 10 hours * 4 quarters
 
 		--header--gap: 1rem;
 		--column--gap: 0.5rem;
@@ -48,6 +98,10 @@
 
 		column-gap: var(--column--gap);
 		row-gap: var(--row--gap);
+
+		&.has-suggestion {
+			padding-bottom: calc(var(--share-panel-height, 8rem) + 2rem);
+		}
 	}
 
 	header {
@@ -62,14 +116,15 @@
 			font-size: 1rem;
 			font-weight: 700;
 			margin: 0;
+		}
+	}
 
-			&:first-child {
-				grid-column: 2;
-			}
+	.click-target {
+		cursor: pointer;
+		border-radius: var(--border-radius--100);
 
-			&:last-child {
-				grid-column: 3;
-			}
+		&:hover {
+			background: hsl(from var(--c--main--text) h s l / 0.04);
 		}
 	}
 </style>

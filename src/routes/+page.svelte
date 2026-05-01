@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { hasConflict } from '$lib/calendar';
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import DateStepper from '$lib/components/DateStepper.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
+	import SharePanel from '$lib/components/SharePanel.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
-	import type { Booking } from '$lib/types';
+	import type { Booking, TimeSuggestion } from '$lib/types';
 	import { getBollTitle } from '$lib/utils';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
 	import { Temporal } from '@js-temporal/polyfill';
@@ -21,10 +23,25 @@
 	let freshResult: { bookings: Booking[]; scrapedAt: string } | null = $state(null);
 	let scrapeError: unknown = $state(null);
 	let settled = $state(false);
+	let suggestion: TimeSuggestion | null = $state(null);
 
 	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
 	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError && !settled);
+
+	$effect(() => {
+		if (!suggestion || !bookingList) return;
+		if (
+			hasConflict(
+				bookingList,
+				suggestion.court,
+				suggestion.startMinutes,
+				suggestion.durationMinutes
+			)
+		) {
+			suggestion = null;
+		}
+	});
 
 	async function applyFreshResult(
 		result: { bookings: Booking[]; scrapedAt: string },
@@ -112,7 +129,15 @@
 
 	{#if bookingList && scrapedAt}
 		<FreshnessIndicator {scrapedAt} {refreshing} />
-		<Calendar bookings={bookingList} weatherEntries={middayWeather.targetDateWeatherEntryList} />
+		<Calendar
+			bookings={bookingList}
+			weatherEntries={middayWeather.targetDateWeatherEntryList}
+			bind:suggestion
+		/>
+
+		{#if !suggestion}
+			<p class="hint">Tryck på en ledig tid för att skapa ett tidsförslag</p>
+		{/if}
 	{:else if refreshing}
 		<BigLoader messages={loadingMessageList} delayMs={4000} />
 	{:else}
@@ -137,6 +162,10 @@
 		</div>
 	{/if}
 </main>
+
+{#if bookingList}
+	<SharePanel bind:suggestion bookings={bookingList} date={targetDate} />
+{/if}
 
 <style>
 	main {
@@ -165,5 +194,12 @@
 			height: 1em;
 			width: 1em;
 		}
+	}
+
+	.hint {
+		font-size: 0.75rem;
+		margin-top: 1.5rem;
+		opacity: 0.45;
+		text-align: center;
 	}
 </style>

@@ -33,6 +33,10 @@
 
 		--c--blue--28: hsl(207, 55%, 28%);
 		--c--blue--92: hsl(207, 80%, 92%);
+
+		--c--red--52: hsl(358, 48%, 52%);
+		--c--red--64: hsl(358, 65%, 64%);
+
 		--c--white--100: hsl(0, 0%, 100%);
 
 		//
@@ -43,6 +47,10 @@
 
 		--c--booking--background: var(--c--blue--35);
 		--c--booking--text: var(--c--white--100);
+
+		--c--suggestion--background: var(--c--red--64);
+		--c--suggestion--border: var(--c--red--52);
+		--c--suggestion--text: var(--c--white--100);
 
 		--c--surface--raised: var(--c--blue--92);
 
