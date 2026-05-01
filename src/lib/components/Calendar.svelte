@@ -29,14 +29,9 @@
 		clickedMinutes: number,
 		durationMinutes: number
 	): TimeSuggestion | null {
-		const halfDurationSteps = Math.floor(durationMinutes / 2 / CALENDAR_STEP_MINUTES);
-		const centered = clickedMinutes - halfDurationSteps * CALENDAR_STEP_MINUTES;
-		const clamped = Math.max(
-			CALENDAR_START_MINUTES,
-			Math.min(centered, CALENDAR_END_MINUTES - durationMinutes)
-		);
-		if (hasConflict(bookings, court, clamped, durationMinutes)) return null;
-		return { startMinutes: clamped, durationMinutes, court };
+		const startMinutes = Math.min(clickedMinutes, CALENDAR_END_MINUTES - durationMinutes);
+		if (hasConflict(bookings, court, startMinutes, durationMinutes)) return null;
+		return { startMinutes, durationMinutes, court };
 	}
 
 	function handleCourtClick(court: Court, event: MouseEvent) {
