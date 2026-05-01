@@ -14,7 +14,7 @@ import {
 } from '$lib/calendar';
 import { fullCourtId } from '$lib/ids';
 import type { Booking, Court, TimeSuggestion } from '$lib/types';
-import { formattedTimeToMinutes, getBollTitle, print24HourTime } from '$lib/utils';
+import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
 
 const SCALE = 2;
 const W = 460;
@@ -22,7 +22,8 @@ const H = 620;
 const PAD = 18;
 
 const HEADER_Y = PAD;
-const HEADER_H = 56;
+const HEADER_H = 36;
+const SLOT_RADIUS = 10;
 const COL_HEADER_Y = HEADER_Y + HEADER_H;
 const COL_HEADER_H = 24;
 const GRID_Y = COL_HEADER_Y + COL_HEADER_H;
@@ -74,7 +75,7 @@ export async function generateShareImage(params: {
 	const colors = getThemeColors();
 
 	await Promise.all(
-		[400, 600, 700, 900].map((weight) => document.fonts.load(`${weight} 16px Montserrat`))
+		[400, 600, 700, 800].map((weight) => document.fonts.load(`${weight} 16px Montserrat`))
 	);
 
 	const canvas = document.createElement('canvas');
@@ -89,17 +90,13 @@ export async function generateShareImage(params: {
 
 	// Header
 	ctx.fillStyle = colors.text;
-	ctx.font = `900 30px ${FONT}`;
-	ctx.fillText(getBollTitle(date), PAD, HEADER_Y + 30);
-
-	ctx.fillStyle = colors.textLight;
-	ctx.font = `400 16px ${FONT}`;
+	ctx.font = `800 24px ${FONT}`;
 	const dateStr = date.toLocaleString('sv-SE', {
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long'
 	});
-	ctx.fillText(dateStr.charAt(0).toUpperCase() + dateStr.slice(1), PAD, HEADER_Y + 50);
+	ctx.fillText(dateStr.charAt(0).toUpperCase() + dateStr.slice(1), PAD, HEADER_Y + 24);
 
 	// Column headers
 	ctx.fillStyle = colors.text;
@@ -154,7 +151,7 @@ export async function generateShareImage(params: {
 		const bh = (endRow - startRow) * ROW_H - 2;
 
 		ctx.fillStyle = colors.bookingBg;
-		roundRect(ctx, x + 2, by, w - 4, bh, 6);
+		roundRect(ctx, x + 2, by, w - 4, bh, SLOT_RADIUS);
 		ctx.fill();
 
 		ctx.fillStyle = colors.bookingText;
@@ -181,13 +178,13 @@ export async function generateShareImage(params: {
 		const sh = (endRow - startRow) * ROW_H - 2;
 
 		ctx.fillStyle = colors.suggestionBg;
-		roundRect(ctx, x + 2, sy, w - 4, sh, 6);
+		roundRect(ctx, x + 2, sy, w - 4, sh, SLOT_RADIUS);
 		ctx.fill();
 
 		ctx.strokeStyle = colors.suggestionBorder;
 		ctx.lineWidth = 2;
 		ctx.setLineDash([5, 3]);
-		roundRect(ctx, x + 2, sy, w - 4, sh, 6);
+		roundRect(ctx, x + 2, sy, w - 4, sh, SLOT_RADIUS);
 		ctx.stroke();
 		ctx.setLineDash([]);
 

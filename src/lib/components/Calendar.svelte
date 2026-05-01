@@ -8,6 +8,7 @@
 		COURT_ID_LIST,
 		COURT_LABEL,
 		DEFAULT_SUGGESTION_DURATION_MINUTES,
+		FALLBACK_SUGGESTION_DURATION_MINUTES,
 		hasConflict
 	} from '$lib/calendar';
 	import type { Booking, Court, ParsedWeatherTimeEntry, TimeSuggestion } from '$lib/types';
@@ -23,6 +24,16 @@
 
 	let { bookings, weatherEntries, suggestion = $bindable(null) }: CalendarProps = $props();
 
+	function tryPlaceSuggestion(
+		court: Court,
+		clickedMinutes: number,
+		durationMinutes: number
+	): TimeSuggestion | null {
+		const startMinutes = Math.min(clickedMinutes, CALENDAR_END_MINUTES - durationMinutes);
+		if (hasConflict(bookings, court, startMinutes, durationMinutes)) return null;
+		return { startMinutes, durationMinutes, court };
+	}
+
 	function handleCourtClick(court: Court, event: MouseEvent) {
 		const target = event.currentTarget as HTMLElement;
 		const rect = target.getBoundingClientRect();
@@ -33,22 +44,10 @@
 		const rowIndex = Math.max(0, Math.min(CALENDAR_ROWS - 1, Math.floor(y / (rowHeight + gap))));
 		const clickedMinutes = CALENDAR_START_MINUTES + rowIndex * CALENDAR_STEP_MINUTES;
 
-		const halfDurationSteps = Math.floor(
-			DEFAULT_SUGGESTION_DURATION_MINUTES / 2 / CALENDAR_STEP_MINUTES
-		);
-		const centered = clickedMinutes - halfDurationSteps * CALENDAR_STEP_MINUTES;
-		const clamped = Math.max(
-			CALENDAR_START_MINUTES,
-			Math.min(centered, CALENDAR_END_MINUTES - DEFAULT_SUGGESTION_DURATION_MINUTES)
-		);
-
-		if (hasConflict(bookings, court, clamped, DEFAULT_SUGGESTION_DURATION_MINUTES)) return;
-
-		suggestion = {
-			startMinutes: clamped,
-			durationMinutes: DEFAULT_SUGGESTION_DURATION_MINUTES,
-			court
-		};
+		const placed =
+			tryPlaceSuggestion(court, clickedMinutes, DEFAULT_SUGGESTION_DURATION_MINUTES) ??
+			tryPlaceSuggestion(court, clickedMinutes, FALLBACK_SUGGESTION_DURATION_MINUTES);
+		if (placed) suggestion = placed;
 	}
 </script>
 
