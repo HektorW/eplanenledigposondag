@@ -20,15 +20,22 @@
 	const targetDate = $derived(Temporal.PlainDate.from(data.date));
 	const bollTitle = $derived(getBollTitle(targetDate));
 
-	// Weather is streamed; keep the previous value across navigations so the
-	// meta line doesn't flicker while the new promise resolves.
-	let weather: WeatherResponseData | null = $state(null);
+	// Weather is server-rendered when cached, otherwise streamed. While a
+	// stream is pending, keep the last streamed value so the meta line doesn't
+	// flicker across navigations.
+	let streamedWeather: WeatherResponseData | null = $state(null);
+	const weather = $derived(data.weather ?? streamedWeather);
 	$effect(() => {
-		const pending = data.weather;
+		const pending = data.weatherPending;
+		if (!pending) return;
 		let cancelled = false;
-		pending.then((result) => {
-			if (!cancelled) weather = result;
-		});
+		pending
+			.then((result) => {
+				if (!cancelled) streamedWeather = result;
+			})
+			.catch(() => {
+				// Stream cut off mid-navigation — keep whatever we had.
+			});
 		return () => {
 			cancelled = true;
 		};

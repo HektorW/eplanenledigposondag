@@ -35,13 +35,17 @@ async function fetchFresh(location: WeatherLocation): Promise<WeatherResponseDat
 	return (await response.json()) as WeatherResponseData;
 }
 
+/** Cached weather for the location if still fresh, without fetching. */
+export function peekWeather(location: WeatherLocation): WeatherResponseData | null {
+	const cached = cache.get(locationKey(location));
+	return cached && cached.expiresAt > Date.now() ? cached.data : null;
+}
+
 export async function fetchWeather(location: WeatherLocation) {
 	const key = locationKey(location);
 
-	const cached = cache.get(key);
-	if (cached && cached.expiresAt > Date.now()) {
-		return cached.data;
-	}
+	const cached = peekWeather(location);
+	if (cached) return cached;
 
 	let pending = inFlight.get(key);
 	if (!pending) {
