@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildPageQuery, DEFAULT_FIELD_ID, FIELD_LIST, isFieldId, parseFieldId } from './fields';
+import {
+	buildPageQuery,
+	DEFAULT_FIELD_ID,
+	FIELD_LIST,
+	getField,
+	isFieldId,
+	parseFieldId
+} from './fields';
 
 describe('parseFieldId', () => {
 	it('defaults to the first field when missing', () => {
@@ -32,5 +39,24 @@ describe('buildPageQuery', () => {
 		expect(buildPageQuery({ date: '2026-10-11', fieldId: DEFAULT_FIELD_ID })).toBe(
 			'?date=2026-10-11'
 		);
+	});
+
+	it('includes non-default fields', () => {
+		expect(buildPageQuery({ date: '2026-10-11', fieldId: 'mellanheden' })).toBe(
+			'?date=2026-10-11&field=mellanheden'
+		);
+	});
+});
+
+describe('getField', () => {
+	it('returns the config for a field id', () => {
+		expect(getField('mellanheden').name).toBe('Mellanheden');
+	});
+});
+
+describe('FIELD_LIST', () => {
+	it('has unique ids', () => {
+		const idList = FIELD_LIST.map((field) => field.id);
+		expect(new Set(idList).size).toBe(idList.length);
 	});
 });

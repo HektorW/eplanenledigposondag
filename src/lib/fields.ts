@@ -4,15 +4,27 @@
  *
  * Client-safe — scrape details live in `$lib/server/scrapeBlazor/fieldScrapeConfig`.
  */
-export const FIELD_LIST = [{ id: 'sorgenfri', name: 'Sorgenfri' }] as const satisfies readonly {
+export type WeatherLocation = { lat: number; lon: number };
+
+export const FIELD_LIST = [
+	{ id: 'sorgenfri', name: 'Sorgenfri', weatherLocation: { lat: 55.59, lon: 13.02 } },
+	{ id: 'mellanheden', name: 'Mellanheden', weatherLocation: { lat: 55.5909, lon: 12.9688 } }
+] as const satisfies readonly {
 	id: string;
 	name: string;
+	weatherLocation: WeatherLocation;
 }[];
 
 export type Field = (typeof FIELD_LIST)[number];
 export type FieldId = Field['id'];
 
 export const DEFAULT_FIELD_ID: FieldId = FIELD_LIST[0].id;
+
+export function getField(fieldId: FieldId): Field {
+	const field = FIELD_LIST.find((candidate) => candidate.id === fieldId);
+	if (!field) throw new Error(`Unknown field: ${fieldId}`);
+	return field;
+}
 
 export function isFieldId(value: unknown): value is FieldId {
 	return FIELD_LIST.some((field) => field.id === value);

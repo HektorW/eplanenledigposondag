@@ -9,15 +9,16 @@ import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step2SearchForField');
 
-export async function searchForField(page: Page, config: FieldScrapeConfig) {
-	await searchAndClickLabels(page, config);
+/** Searches for the field's resources and selects them. Returns how many were selected. */
+export async function searchForField(page: Page, config: FieldScrapeConfig): Promise<number> {
+	return searchAndClickLabels(page, config);
 }
 
 async function searchAndClickLabels(
 	page: Page,
 	config: FieldScrapeConfig,
 	retryCount = 0
-): Promise<void> {
+): Promise<number> {
 	logger.debug('Searching for field and selecting labels...', {
 		searchTerm: config.searchTerm,
 		retryCount
@@ -39,22 +40,7 @@ async function searchAndClickLabels(
 
 	logger.debug('Looking for correct labels to appear...');
 
-	// Use page.waitForFunction to poll inside the browser instead of round-tripping
-	// through CDP on every poll iteration.
-	const labelsReady = await attempt(() =>
-		page.waitForFunction(
-			(labelSelector: string, expectedText: string, expectedCount: number) => {
-				const labels = document.querySelectorAll(labelSelector);
-				if (labels.length !== expectedCount) return false;
-				const matching = Array.from(labels).filter((el) => el.textContent?.includes(expectedText));
-				return matching.length === expectedCount;
-			},
-			{ timeout: 2000 },
-			selectors.resourceLabel,
-			config.labelText,
-			config.labelCount
-		)
-	);
+	const labelsReady = await attempt(() => waitForFieldLabels(page, config));
 	if (isFail(labelsReady)) {
 		logger.debug('Error while waiting for labels:', labelsReady.error);
 		return restartSearch();
@@ -95,7 +81,51 @@ async function searchAndClickLabels(
 		}
 	}
 
+	const selectedCount = fieldLabels.length;
 	fieldLabels.forEach((label) => label.dispose());
+	return selectedCount;
+}
+
+const LABEL_SETTLE_MS = 300;
+const LABEL_SETTLE_MAX_CHECKS = 5;
+
+/**
+ * Waits until the search result list only contains this field's labels.
+ * With a known `labelCount` it waits for exactly that many; otherwise it
+ * waits for at least one and then for the list to stop changing.
+ */
+async function waitForFieldLabels(page: Page, config: FieldScrapeConfig): Promise<void> {
+	// Use page.waitForFunction to poll inside the browser instead of round-tripping
+	// through CDP on every poll iteration.
+	await page.waitForFunction(
+		(labelSelector: string, expectedText: string, expectedCount: number | null) => {
+			const labels = Array.from(document.querySelectorAll(labelSelector));
+			if (labels.length === 0) return false;
+			if (expectedCount !== null && labels.length !== expectedCount) return false;
+			return labels.every((el) => el.textContent?.includes(expectedText));
+		},
+		{ timeout: 2000 },
+		selectors.resourceLabel,
+		config.labelText,
+		config.labelCount ?? null
+	);
+
+	if (config.labelCount !== undefined) return;
+
+	const countLabels = () =>
+		page.$$eval(selectors.resourceLabel, (labels) => labels.length).catch(() => -1);
+
+	let count = await countLabels();
+	for (let check = 0; check < LABEL_SETTLE_MAX_CHECKS; check++) {
+		await new Promise((resolve) => setTimeout(resolve, LABEL_SETTLE_MS));
+		const next = await countLabels();
+		if (next === count) {
+			logger.debug('Field labels settled', { count });
+			return;
+		}
+		count = next;
+	}
+	throw new Error('Field labels never settled');
 }
 
 /**

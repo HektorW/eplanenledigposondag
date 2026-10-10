@@ -1,4 +1,4 @@
-import { parseFieldId } from '$lib/fields';
+import { getField, parseFieldId } from '$lib/fields';
 import { loadBookings } from '$lib/server/cache';
 import { createLogger } from '$lib/server/logger';
 import { fetchWeather } from '$lib/server/weather/fetchWeather';
@@ -31,7 +31,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		fresh,
 		// Streamed — the page shouldn't wait on met.no. Weather is decoration,
 		// so a failure resolves to null instead of erroring the stream.
-		weather: fetchWeather().catch((error: unknown) => {
+		weather: fetchWeather(getField(fieldId).weatherLocation).catch((error: unknown) => {
 			logger.error('Failed to fetch weather', error);
 			return null;
 		})
