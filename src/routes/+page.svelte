@@ -61,9 +61,10 @@
 		}))
 	);
 
-	// A suggestion belongs to one field — drop it when switching.
+	// A suggestion belongs to one field and date — drop it when either changes.
 	$effect(() => {
 		void data.fieldId;
+		void data.date;
 		suggestion = null;
 	});
 
