@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { Temporal } from '@js-temporal/polyfill';
+import type { FieldId } from '$lib/fields';
 import type { Booking } from '$lib/types';
 import { scrapeCalendar, ScrapePreemptedError } from './scrapeBlazor/scrapeCalendar';
 import { createLogger } from './logger';
@@ -35,16 +36,19 @@ function getRedis(): Redis | null {
 
 const memoryCache = new Map<string, CacheEntry>();
 
-function cacheKey(targetDate: Temporal.PlainDate): string {
-	return `bookings:${targetDate.toString()}`;
+function cacheKey(fieldId: FieldId, targetDate: Temporal.PlainDate): string {
+	return `bookings:${fieldId}:${targetDate.toString()}`;
 }
 
 function isStale(entry: CacheEntry): boolean {
 	return Date.now() - new Date(entry.scrapedAt).getTime() > STALE_AFTER_MS;
 }
 
-async function readCache(targetDate: Temporal.PlainDate): Promise<CacheEntry | null> {
-	const key = cacheKey(targetDate);
+async function readCache(
+	fieldId: FieldId,
+	targetDate: Temporal.PlainDate
+): Promise<CacheEntry | null> {
+	const key = cacheKey(fieldId, targetDate);
 	const redis = getRedis();
 
 	if (redis) {
@@ -60,8 +64,12 @@ async function readCache(targetDate: Temporal.PlainDate): Promise<CacheEntry | n
 	return memoryCache.get(key) ?? null;
 }
 
-async function writeCache(targetDate: Temporal.PlainDate, entry: CacheEntry): Promise<void> {
-	const key = cacheKey(targetDate);
+async function writeCache(
+	fieldId: FieldId,
+	targetDate: Temporal.PlainDate,
+	entry: CacheEntry
+): Promise<void> {
+	const key = cacheKey(fieldId, targetDate);
 	const redis = getRedis();
 
 	if (redis) {
@@ -81,13 +89,13 @@ async function writeCache(targetDate: Temporal.PlainDate, entry: CacheEntry): Pr
 const inFlightScrapes = new Map<string, Promise<CacheEntry>>();
 
 /**
- * Scrapes and persists results. Concurrent callers for the same date
+ * Scrapes and persists results. Concurrent callers for the same field + date
  * share one in-flight scrape instead of each launching their own Puppeteer run.
  * The scrape itself owns its timeout (see scrapeCalendar) — here we only
- * dedupe by date.
+ * dedupe by key.
  */
-function scrapeAndCache(targetDate: Temporal.PlainDate): Promise<CacheEntry> {
-	const key = cacheKey(targetDate);
+function scrapeAndCache(fieldId: FieldId, targetDate: Temporal.PlainDate): Promise<CacheEntry> {
+	const key = cacheKey(fieldId, targetDate);
 
 	const existing = inFlightScrapes.get(key);
 	if (existing) {
@@ -97,10 +105,10 @@ function scrapeAndCache(targetDate: Temporal.PlainDate): Promise<CacheEntry> {
 
 	logger.info('Scraping for cache...');
 	const promise = (async () => {
-		const bookings = await scrapeCalendar(targetDate);
+		const bookings = await scrapeCalendar(fieldId, targetDate);
 		const entry: CacheEntry = { bookings, scrapedAt: new Date().toISOString() };
-		await writeCache(targetDate, entry);
-		logger.info('Scrape complete, cached', { count: bookings.length });
+		await writeCache(fieldId, targetDate, entry);
+		logger.info('Scrape complete, cached', { key, count: bookings.length });
 		return entry;
 	})().finally(() => {
 		inFlightScrapes.delete(key);
@@ -128,34 +136,38 @@ function withPreemptSentinel(scrape: Promise<CacheEntry>): Promise<FreshResult> 
 }
 
 /**
- * Reads persistent cache. Returns cached data + a streaming promise for fresh data if stale.
+ * Reads persistent cache for one field. Returns cached data + a streaming
+ * promise for fresh data if stale or missing.
  */
-export async function loadBookings(targetDate: Temporal.PlainDate): Promise<{
+export async function loadBookings(
+	fieldId: FieldId,
+	targetDate: Temporal.PlainDate
+): Promise<{
 	bookings: Booking[] | null;
 	scrapedAt: string | null;
 	fresh: Promise<FreshResult> | null;
 }> {
-	const cached = await readCache(targetDate);
+	const cached = await readCache(fieldId, targetDate);
 
 	if (cached && !isStale(cached)) {
-		logger.debug('Serving fresh cache');
+		logger.debug('Serving fresh cache', { fieldId });
 		return { bookings: cached.bookings, scrapedAt: cached.scrapedAt, fresh: null };
 	}
 
 	if (cached) {
-		logger.debug('Serving stale cache, streaming fresh scrape');
+		logger.debug('Serving stale cache, streaming fresh scrape', { fieldId });
 		return {
 			bookings: cached.bookings,
 			scrapedAt: cached.scrapedAt,
-			fresh: withPreemptSentinel(scrapeAndCache(targetDate))
+			fresh: withPreemptSentinel(scrapeAndCache(fieldId, targetDate))
 		};
 	}
 
 	// No cache — stream the scrape
-	logger.info('No cache, streaming initial scrape');
+	logger.info('No cache, streaming initial scrape', { fieldId });
 	return {
 		bookings: null,
 		scrapedAt: null,
-		fresh: withPreemptSentinel(scrapeAndCache(targetDate))
+		fresh: withPreemptSentinel(scrapeAndCache(fieldId, targetDate))
 	};
 }

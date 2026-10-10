@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
 	CALENDAR_END_MINUTES,
 	CALENDAR_START_MINUTES,
+	clampToCalendar,
 	hasConflict,
+	snapToGridStep,
 	minutesToGridRow,
 	minutesToRowIndex
 } from './calendar';
@@ -101,5 +103,77 @@ describe('hasConflict', () => {
 		];
 		expect(hasConflict(bookings, 'a', 11 * 60, 60)).toBe(false);
 		expect(hasConflict(bookings, 'a', 9 * 60, 60)).toBe(false);
+	});
+});
+
+describe('clampToCalendar', () => {
+	it('leaves ranges inside the calendar untouched', () => {
+		expect(clampToCalendar(10 * 60, 11 * 60)).toEqual({ start: 10 * 60, end: 11 * 60 });
+	});
+
+	it('clamps a booking that starts before the calendar', () => {
+		expect(clampToCalendar(8 * 60, 16 * 60)).toEqual({
+			start: CALENDAR_START_MINUTES,
+			end: 16 * 60
+		});
+	});
+
+	it('clamps a booking that ends after the calendar', () => {
+		expect(clampToCalendar(18 * 60, 22 * 60)).toEqual({
+			start: 18 * 60,
+			end: CALENDAR_END_MINUTES
+		});
+	});
+
+	it('returns null for ranges entirely outside the calendar', () => {
+		expect(clampToCalendar(7 * 60, CALENDAR_START_MINUTES)).toBeNull();
+		expect(clampToCalendar(CALENDAR_END_MINUTES, 21 * 60)).toBeNull();
+	});
+
+	it('leaves the end alone with clampEnd: false', () => {
+		expect(clampToCalendar(18 * 60, 22 * 60, { clampEnd: false })).toEqual({
+			start: 18 * 60,
+			end: 22 * 60
+		});
+		expect(clampToCalendar(20 * 60, 21 * 60 + 30, { clampEnd: false })).toEqual({
+			start: 20 * 60,
+			end: 21 * 60 + 30
+		});
+		expect(clampToCalendar(7 * 60, 8 * 60, { clampEnd: false })).toBeNull();
+	});
+});
+
+describe('snapToGridStep', () => {
+	const t = (hours: number, minutes = 0) => hours * 60 + minutes;
+
+	it('leaves on-grid ranges untouched', () => {
+		expect(snapToGridStep({ start: t(17), end: t(18, 30) })).toEqual({
+			start: t(17),
+			end: t(18, 30)
+		});
+	});
+
+	it('rounds off-grid times to the nearest step', () => {
+		expect(snapToGridStep({ start: t(17), end: t(18, 25) })).toEqual({
+			start: t(17),
+			end: t(18, 30)
+		});
+		expect(snapToGridStep({ start: t(18, 25), end: t(19, 50) })).toEqual({
+			start: t(18, 30),
+			end: t(19, 45)
+		});
+	});
+
+	it('keeps back-to-back bookings touching', () => {
+		const first = snapToGridStep({ start: t(18, 25), end: t(19, 50) });
+		const second = snapToGridStep({ start: t(19, 50), end: t(21, 15) });
+		expect(first.end).toBe(second.start);
+	});
+
+	it('never collapses a range below one step', () => {
+		expect(snapToGridStep({ start: t(10), end: t(10, 5) })).toEqual({
+			start: t(10),
+			end: t(10, 15)
+		});
 	});
 });

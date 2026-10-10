@@ -3,10 +3,12 @@
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import DateStepper from '$lib/components/DateStepper.svelte';
+	import FieldChips, { type FieldChip } from '$lib/components/FieldChips.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
 	import SharePanel from '$lib/components/SharePanel.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
-	import type { Booking, TimeSuggestion } from '$lib/types';
+	import { buildPageQuery, FIELD_LIST } from '$lib/fields';
+	import type { Booking, TimeSuggestion, WeatherResponseData } from '$lib/types';
 	import { getBollTitle } from '$lib/utils';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
 	import { Temporal } from '@js-temporal/polyfill';
@@ -17,7 +19,29 @@
 
 	const targetDate = $derived(Temporal.PlainDate.from(data.date));
 	const bollTitle = $derived(getBollTitle(targetDate));
-	const middayWeather = $derived(getMiddayWeather(data.weather, targetDate));
+
+	// Weather is server-rendered when cached, otherwise streamed. While a
+	// stream is pending, keep the last streamed value so the meta line doesn't
+	// flicker across navigations.
+	let streamedWeather: WeatherResponseData | null = $state(null);
+	const weather = $derived(data.weather ?? streamedWeather);
+	$effect(() => {
+		const pending = data.weatherPending;
+		if (!pending) return;
+		let cancelled = false;
+		pending
+			.then((result) => {
+				if (!cancelled) streamedWeather = result;
+			})
+			.catch(() => {
+				// Stream cut off mid-navigation — keep whatever we had.
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	const middayWeather = $derived(getMiddayWeather(weather, targetDate));
 	const loadingMessageList = $derived(buildLoadingMessageList(middayWeather));
 
 	let freshResult: { bookings: Booking[]; scrapedAt: string } | null = $state(null);
@@ -28,6 +52,21 @@
 	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
 	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError && !settled);
+
+	const fieldChipList: FieldChip[] = $derived(
+		FIELD_LIST.map((field) => ({
+			id: field.id,
+			name: field.name,
+			query: buildPageQuery({ date: data.date, fieldId: field.id })
+		}))
+	);
+
+	// A suggestion belongs to one field and date — drop it when either changes.
+	$effect(() => {
+		void data.fieldId;
+		void data.date;
+		suggestion = null;
+	});
 
 	$effect(() => {
 		if (!suggestion || !bookingList) return;
@@ -109,23 +148,29 @@
 
 <main>
 	<h1 class="title">{bollTitle}</h1>
-	<p class="meta">
-		<DateStepper date={targetDate} />
-		{#if middayWeather.middayWeatherEntry}
-			&nbsp;|&nbsp;
-			<img
-				src="weather-icons/{middayWeather.middayWeatherSymbol}.png"
-				alt={middayWeather.middayWeatherLabel ?? middayWeather.middayWeatherSymbol}
-			/>
+	<div class="controls">
+		<p class="meta">
+			<DateStepper date={targetDate} fieldId={data.fieldId} />
+			{#if middayWeather.middayWeatherEntry}
+				&nbsp;|&nbsp;
+				<img
+					src="weather-icons/{middayWeather.middayWeatherSymbol}.png"
+					alt={middayWeather.middayWeatherLabel ?? middayWeather.middayWeatherSymbol}
+				/>
 
-			{#if middayWeather.middayWeatherLabel}
-				&nbsp;<small>({middayWeather.middayWeatherLabel})</small>
+				{#if middayWeather.middayWeatherLabel}
+					&nbsp;<small>({middayWeather.middayWeatherLabel})</small>
+				{/if}
+
+				&nbsp;
+				<span>{middayWeather.middayWeatherTemperature?.toFixed(1)}°</span>
 			{/if}
+		</p>
 
-			&nbsp;
-			<span>{middayWeather.middayWeatherTemperature?.toFixed(1)}°</span>
+		{#if fieldChipList.length > 1}
+			<FieldChips chips={fieldChipList} selectedId={data.fieldId} />
 		{/if}
-	</p>
+	</div>
 
 	{#if bookingList && scrapedAt}
 		<FreshnessIndicator {scrapedAt} {refreshing} />

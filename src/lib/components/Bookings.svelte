@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { COURT_GRID_COLUMN, FULL_COURT_GRID_COLUMN, minutesToGridRow } from '$lib/calendar';
+	import {
+		CALENDAR_STEP_MINUTES,
+		clampToCalendar,
+		COMPACT_BOOKING_MAX_MINUTES,
+		COURT_GRID_COLUMN,
+		FULL_COURT_GRID_COLUMN,
+		minutesToGridRow,
+		snapToGridStep
+	} from '$lib/calendar';
 	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 	import type { Booking } from '$lib/types';
 	import { formattedTimeToMinutes, print24HourTime } from '$lib/utils';
@@ -15,32 +23,36 @@
 	const fullCourtEntries = $derived(bookings.filter((entry) => entry.resourceId === fullCourtId));
 
 	function getMinutes(entry: Booking) {
-		return {
-			start: formattedTimeToMinutes(entry.startTimeFormatted),
-			end: formattedTimeToMinutes(entry.endTimeFormatted)
-		};
+		const start = formattedTimeToMinutes(entry.startTimeFormatted);
+		const end = formattedTimeToMinutes(entry.endTimeFormatted);
+		const visible = clampToCalendar(start, end, { clampEnd: false });
+		return { start, end, visible: visible && snapToGridStep(visible) };
 	}
 </script>
 
 {#snippet renderBookingEntries(entries: Booking[], column: string)}
 	{#each entries as entry (entry.bookingId)}
 		{@const minutes = getMinutes(entry)}
-		{@const startRow = minutesToGridRow(minutes.start)}
-		{@const endRow = minutesToGridRow(minutes.end)}
+		{#if minutes.visible}
+			<article
+				class="booking-entry"
+				class:booking-entry--compact={minutes.visible.end - minutes.visible.start <
+					COMPACT_BOOKING_MAX_MINUTES}
+				class:booking-entry--single-line={minutes.visible.end - minutes.visible.start <=
+					CALENDAR_STEP_MINUTES}
+				style:grid-column={column}
+				style:grid-row={`${minutesToGridRow(minutes.visible.start)} / ${minutesToGridRow(minutes.visible.end)}`}
+			>
+				{#if 'bookedBy' in entry}
+					<h3 class="booking-entry--name">{entry.bookedBy}</h3>
+				{/if}
 
-		<article
-			class="booking-entry"
-			style:grid-column={column}
-			style:grid-row={`${startRow} / ${endRow}`}
-		>
-			{#if 'bookedBy' in entry}
-				<h3 class="booking-entry--name">{entry.bookedBy}</h3>
-			{/if}
-
-			<div class="booking-entry--time">
-				{print24HourTime(minutes.start)} - {print24HourTime(minutes.end)}
-			</div>
-		</article>
+				<!-- Real times, even when the block is clamped or snapped to the grid -->
+				<div class="booking-entry--time">
+					{print24HourTime(minutes.start)} - {print24HourTime(minutes.end)}
+				</div>
+			</article>
+		{/if}
 	{/each}
 {/snippet}
 
@@ -65,6 +77,44 @@
 
 		&--time {
 			@include block.secondary;
+		}
+	}
+
+	// Under an hour the regular padding doesn't leave room for name + time.
+	// Tighten it and keep the name to one line.
+	.booking-entry--compact {
+		line-height: 1.1;
+		overflow: hidden;
+		padding-block: 0.3rem;
+
+		.booking-entry--name {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.booking-entry--time {
+			margin-top: 0.1rem;
+			white-space: nowrap;
+		}
+	}
+
+	// A single row (15 min) only fits one line — name and time share it and
+	// the name gives way first.
+	.booking-entry--single-line {
+		align-items: center;
+		display: flex;
+		gap: 0.5em;
+		line-height: 1;
+		padding-block: 0.15rem;
+
+		.booking-entry--name {
+			min-width: 0;
+		}
+
+		.booking-entry--time {
+			flex-shrink: 0;
+			margin-top: 0;
 		}
 	}
 </style>

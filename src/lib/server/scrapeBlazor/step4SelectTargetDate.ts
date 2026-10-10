@@ -4,61 +4,113 @@ import { Temporal } from '@js-temporal/polyfill';
 import type { Page } from 'puppeteer-core';
 import { resourceAndDateRegex } from './constants';
 import { withSelector } from './withElement';
+import { attempt, isFail } from '$lib/attempt';
 import { createLogger } from '../logger';
+import { waitForUnblocked } from './waitForUnblocked';
 
 const logger = createLogger('scrapeBlazor:step4SelectTargetDate');
 
-export async function selectTargetDate(page: Page, targetDate: Temporal.PlainDate, retryCount = 0) {
-	if (retryCount > MAX_FUTURE_DAYS) {
-		throw new Error('Max retries reached while selecting target date');
-	}
+/**
+ * How long to give the scheduler to show a new date after a Previous/Next
+ * click. Observed 60-500ms. A click made while the scheduler is still loading
+ * the current day's events is dropped (no loading indicator exists to wait
+ * on), so on timeout the click is simply repeated.
+ */
+const NAV_CHANGE_TIMEOUT_MS = 1500;
+// Target is at most MAX_FUTURE_DAYS ahead; a few extra steps cover a
+// dropped click or an overshoot that has to be walked back.
+const MAX_NAV_STEPS = MAX_FUTURE_DAYS + 4;
 
-	const month = targetDate.month;
-	const day = targetDate.day;
-	const dayAbbreviation = targetDate.toLocaleString('en-US', { weekday: 'short' });
+const navDaySelector = '.k-link.k-nav-day';
 
-	const prefix = (n: number) => (n < 10 ? '0' + n : n);
-	const targetDateStr = `${dayAbbreviation} ${prefix(day)}/${prefix(month)}`;
+export async function selectTargetDate(page: Page, targetDate: Temporal.PlainDate) {
+	const targetDateStr = formatNavDay(targetDate);
 
-	const elementText = await withSelector(page, '.k-link.k-nav-day', async (element) => {
-		assertNonNullish(element, 'Date element not found');
-		const elementText = await element.evaluate((el) => el.textContent?.trim());
-		assertNonNullish(elementText, 'Element text not found');
-		return elementText;
-	});
+	for (let step = 0; step < MAX_NAV_STEPS; step++) {
+		const navDayText = await readNavDayText(page);
 
-	if (!elementText.includes(targetDateStr)) {
-		logger.debug('Target day not found, selecting next day', {
-			elementText
-		});
-
-		await selectNextDay(page);
-
-		// Wait for the date text to change inside the browser — no CDP round trips per poll
-		try {
-			await page.waitForFunction(
-				(oldText: string) => {
-					const el = document.querySelector('.k-link.k-nav-day');
-					return el?.textContent?.trim() !== oldText;
-				},
-				{ timeout: 500 },
-				elementText
-			);
-		} catch {
-			logger.debug('Failed to find new text after clicking next button');
+		if (navDayText.includes(targetDateStr)) {
+			logger.debug('Found target day:', navDayText);
+			await waitForTargetDateBookingsAreVisible(page, targetDate);
+			return;
 		}
 
-		return selectTargetDate(page, targetDate, retryCount + 1);
+		const shownDate = parseNavDay(navDayText, targetDate);
+		// Direction from the shown date, so an overshoot walks back instead of
+		// running off the end. Unparseable → assume we are before the target.
+		const direction: NavDirection =
+			shownDate && Temporal.PlainDate.compare(shownDate, targetDate) > 0 ? 'Previous' : 'Next';
+		logger.debug('Target day not shown, navigating', { navDayText, direction });
+
+		await waitForUnblocked(page);
+		await clickNavButton(page, direction);
+
+		const changed = await attempt(() =>
+			page.waitForFunction(
+				(selector: string, oldText: string) =>
+					document.querySelector(selector)?.textContent?.trim() !== oldText,
+				{ timeout: NAV_CHANGE_TIMEOUT_MS },
+				navDaySelector,
+				navDayText
+			)
+		);
+		if (isFail(changed)) {
+			logger.debug('Shown date did not change after click, clicking again');
+		}
 	}
 
-	logger.debug('Found target day:', elementText);
-	await waitForTargetDateBookingsAreVisible(page, targetDate);
+	throw new Error(`Could not navigate to ${targetDateStr} in ${MAX_NAV_STEPS} steps`);
 }
 
-async function selectNextDay(page: Page) {
-	await withSelector(page, '.k-toolbar button[aria-label="Next"]', async (nextBtn) => {
-		assertNonNullish(nextBtn, 'Next button not found');
-		await nextBtn.click();
+type NavDirection = 'Previous' | 'Next';
+
+/** The scheduler's day header, e.g. "Sun 11/10". */
+function formatNavDay(date: Temporal.PlainDate): string {
+	const dayAbbreviation = date.toLocaleString('en-US', { weekday: 'short' });
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return `${dayAbbreviation} ${pad(date.day)}/${pad(date.month)}`;
+}
+
+/**
+ * Parses the scheduler's day header ("Sun 11/10") back into a date. The
+ * header has no year, so pick the year that puts it closest to
+ * `referenceDate` (matters around New Year).
+ */
+export function parseNavDay(
+	text: string,
+	referenceDate: Temporal.PlainDate
+): Temporal.PlainDate | null {
+	const match = text.match(/(\d{1,2})\/(\d{1,2})/);
+	if (!match) return null;
+	const day = Number(match[1]);
+	const month = Number(match[2]);
+
+	const yearList = [referenceDate.year - 1, referenceDate.year, referenceDate.year + 1];
+	const candidateList = yearList.flatMap((year) => {
+		try {
+			return [Temporal.PlainDate.from({ year, month, day }, { overflow: 'reject' })];
+		} catch {
+			return [];
+		}
+	});
+	const distance = (date: Temporal.PlainDate) => Math.abs(date.until(referenceDate).total('days'));
+	candidateList.sort((a, b) => distance(a) - distance(b));
+	return candidateList[0] ?? null;
+}
+
+async function readNavDayText(page: Page): Promise<string> {
+	return withSelector(page, navDaySelector, async (element) => {
+		assertNonNullish(element, 'Date element not found');
+		const text = await element.evaluate((el) => el.textContent?.trim());
+		assertNonNullish(text, 'Element text not found');
+		return text;
+	});
+}
+
+async function clickNavButton(page: Page, direction: NavDirection) {
+	await withSelector(page, `.k-toolbar button[aria-label="${direction}"]`, async (button) => {
+		assertNonNullish(button, `${direction} button not found`);
+		await button.click();
 	});
 }
 
