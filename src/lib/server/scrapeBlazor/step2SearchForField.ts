@@ -83,27 +83,59 @@ async function searchAndClickLabels(
 	fieldLabels.forEach((label) => label.dispose());
 }
 
+const LABEL_LIST_POLL_MS = 50;
+const LABEL_LIST_STABLE_MS = 300;
+
 /**
- * Waits until the search has returned all its results and exactly
- * `labelCount` of them belong to this field. The total is checked too so we
- * don't click while Blazor is still rendering the list.
+ * Waits until exactly `labelCount` of the listed resources belong to this
+ * field *and* the list has stopped changing.
+ *
+ * The search runs live on every keystroke, so after Enter the list can still
+ * flip through results for partial terms as each Blazor round-trip resolves
+ * (observed: several re-renders 30-100ms apart). A label clicked from a list that
+ * is about to re-render is detached by the time the click lands, so require
+ * the list to be unchanged for LABEL_LIST_STABLE_MS before clicking. The
+ * search may also return other fields' resources; those are ignored as long
+ * as the field's own labels are all present.
  */
 async function waitForFieldLabels(page: Page, config: FieldScrapeConfig): Promise<void> {
-	// Use page.waitForFunction to poll inside the browser instead of round-tripping
-	// through CDP on every poll iteration.
+	// Poll inside the browser instead of round-tripping through CDP on every
+	// iteration. Stability state lives on `window` because the poll function is
+	// re-evaluated from scratch each time.
+	await page.evaluate(() => {
+		delete window.__labelListSignature;
+		delete window.__labelListStablePolls;
+	});
+
 	await page.waitForFunction(
-		(labelSelector: string, expectedText: string, labelCount: number, resultCount: number) => {
+		(labelSelector: string, expectedText: string, labelCount: number, stablePolls: number) => {
 			const labels = Array.from(document.querySelectorAll(labelSelector));
-			if (labels.length !== resultCount) return false;
+			const signature = labels.map((el) => el.textContent).join('\n');
+
+			if (signature === window.__labelListSignature) {
+				window.__labelListStablePolls = (window.__labelListStablePolls ?? 0) + 1;
+			} else {
+				window.__labelListSignature = signature;
+				window.__labelListStablePolls = 0;
+			}
+			if (window.__labelListStablePolls < stablePolls) return false;
+
 			const matching = labels.filter((el) => el.textContent?.includes(expectedText));
 			return matching.length === labelCount;
 		},
-		{ timeout: 2000 },
+		{ timeout: 3000, polling: LABEL_LIST_POLL_MS },
 		selectors.resourceLabel,
 		config.labelText,
 		config.labelCount,
-		config.searchResultCount ?? config.labelCount
+		LABEL_LIST_STABLE_MS / LABEL_LIST_POLL_MS
 	);
+}
+
+declare global {
+	interface Window {
+		__labelListSignature?: string;
+		__labelListStablePolls?: number;
+	}
 }
 
 /**

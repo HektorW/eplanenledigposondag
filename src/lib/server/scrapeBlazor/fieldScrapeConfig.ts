@@ -2,8 +2,9 @@ import type { FieldId } from '$lib/fields';
 
 export type FieldScrapeConfig = {
 	/**
-	 * Typed into the resource search. Should be narrow enough to only hit this
-	 * field's resources — extra searches detach already-found labels.
+	 * Typed into the resource search. The search ANDs whitespace-separated
+	 * substrings; there is no phrase or exclusion syntax. It may hit other
+	 * fields' resources too — `labelText` picks ours out of the results.
 	 */
 	searchTerm: string;
 	/**
@@ -13,11 +14,6 @@ export type FieldScrapeConfig = {
 	labelText: string;
 	/** Number of resource labels to select (e.g. full pitch + halves). */
 	labelCount: number;
-	/**
-	 * Total labels the search returns, when it also hits other fields'
-	 * resources. Defaults to `labelCount`.
-	 */
-	searchResultCount?: number;
 };
 
 // Every field so far has the same layout — an 11-manna pitch plus "7-manna 1"
@@ -44,10 +40,9 @@ export const FIELD_SCRAPE_CONFIG: Record<FieldId, FieldScrapeConfig> = {
 	},
 	rosengard: {
 		searchTerm: 'ros ip kon',
-		// Search also returns Rosengårds Norra IP's 4 resources. Its labels read
+		// Search also returns Rosengårds Norra IP's resources. Those labels read
 		// "Rosengårds Norra IP / …", so they don't contain this text.
 		labelText: 'Rosengårds IP',
-		...fullPitchWithTwoHalves,
-		searchResultCount: 7
+		...fullPitchWithTwoHalves
 	}
 };
