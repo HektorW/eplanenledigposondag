@@ -6,46 +6,43 @@ import { attempt, isFail } from '$lib/attempt';
 import { assertNonNullish } from '$lib/assert';
 import { withSelector } from './withElement';
 import { createLogger } from '../logger';
+import { waitForUnblocked } from './waitForUnblocked';
 
 const logger = createLogger('scrapeBlazor:step2SearchForField');
 
 export async function searchForField(page: Page, config: FieldScrapeConfig): Promise<void> {
-	return searchAndClickLabels(page, config);
-}
+	const maxAttempts = 3;
 
-async function searchAndClickLabels(
-	page: Page,
-	config: FieldScrapeConfig,
-	retryCount = 0
-): Promise<void> {
-	logger.debug('Searching for field and selecting labels...', {
-		searchTerm: config.searchTerm,
-		retryCount
-	});
+	for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex++) {
+		logger.debug('Searching for field and selecting labels...', {
+			searchTerm: config.searchTerm,
+			attemptIndex
+		});
 
-	function restartSearch() {
-		logger.debug('Trying restart search for labels', { retryCount });
+		if (await trySearchAndClickLabels(page, config)) return;
 
-		const maxRetries = 2;
-		if (retryCount >= maxRetries) {
-			throw new Error('Max attempts reached for clicking searching and clicking labels');
-		}
-
-		return searchAndClickLabels(page, config, retryCount + 1);
+		logger.debug('Retrying search for labels', { attemptIndex });
 	}
 
+	throw new Error(`Failed to search for and select field labels after ${maxAttempts} attempts`);
+}
+
+/** One attempt. False means something went stale mid-way and a retry is due. */
+async function trySearchAndClickLabels(page: Page, config: FieldScrapeConfig): Promise<boolean> {
 	await typeSearchTermAndSubmit(page, config.searchTerm);
-	logger.debug('Search submitted with correct value');
+	logger.debug('Search term entered');
 
 	logger.debug('Looking for correct labels to appear...');
 
 	const labelsReady = await attempt(() => waitForFieldLabels(page, config));
 	if (isFail(labelsReady)) {
 		logger.debug('Error while waiting for labels:', labelsReady.error);
-		return restartSearch();
+		return false;
 	}
 
-	// Labels confirmed present — query them once for clicking
+	// Labels confirmed present. Clicking while the busy overlay is still up
+	// silently does nothing, so wait it out first.
+	await waitForUnblocked(page);
 	const allLabels = await page.$$(selectors.resourceLabel);
 	const fieldLabels = await filterElementsWithText(allLabels, config.labelText);
 
@@ -56,14 +53,14 @@ async function searchAndClickLabels(
 		if (!labelFor) {
 			logger.debug('Label for attribute not found', { index: fieldLabels.indexOf(label) });
 			fieldLabels.forEach((label) => label.dispose());
-			return restartSearch();
+			return false;
 		}
 
 		const inputElement = await page.$(`[id="${labelFor}"]`);
 		if (!inputElement) {
 			logger.debug('Input element not found for label', { index: fieldLabels.indexOf(label) });
 			fieldLabels.forEach((label) => label.dispose());
-			return restartSearch();
+			return false;
 		}
 
 		const isChecked = await inputElement.evaluate((el) => (el as HTMLInputElement).checked);
@@ -75,12 +72,13 @@ async function searchAndClickLabels(
 					error: clickResult.error
 				});
 				fieldLabels.forEach((label) => label.dispose());
-				return restartSearch();
+				return false;
 			}
 		}
 	}
 
 	fieldLabels.forEach((label) => label.dispose());
+	return true;
 }
 
 const LABEL_LIST_POLL_MS = 50;
@@ -90,9 +88,9 @@ const LABEL_LIST_STABLE_MS = 300;
  * Waits until exactly `labelCount` of the listed resources belong to this
  * field *and* the list has stopped changing.
  *
- * The search runs live on every keystroke, so after Enter the list can still
- * flip through results for partial terms as each Blazor round-trip resolves
- * (observed: several re-renders 30-100ms apart). A label clicked from a list that
+ * The search runs live on input and the list can re-render more than once
+ * as Blazor round-trips resolve (observed: a broad intermediate result set
+ * replaced by the final one 30-100ms later). A label clicked from a list that
  * is about to re-render is detached by the time the click lands, so require
  * the list to be unchanged for LABEL_LIST_STABLE_MS before clicking. The
  * search may also return other fields' resources; those are ignored as long
@@ -139,61 +137,51 @@ declare global {
 }
 
 /**
- * Types a search term into the search input and verifies Blazor accepted it.
- * Blazor's SignalR can clobber keystrokes during typing — each keystroke triggers
- * a server round-trip and the response can overwrite the input with stale state.
- * This function retries the entire type-and-verify cycle until the value is correct.
+ * Puts the search term into the search input as a single input event. The
+ * search runs live on input, so no submit is needed (Enter would only queue
+ * a second search with the server's not-yet-updated value).
+ *
+ * Typing it key by key does not work reliably: every keystroke is a Blazor
+ * round-trip, and the response to an earlier keystroke resets the input to
+ * that keystroke's value, dropping whatever was typed in between (observed on
+ * the first attempt of every scrape, e.g. "sor man" → "sr man"). Inserting
+ * the whole term at once is one event, one round-trip, nothing to clobber.
+ * The value is still read back and the insert retried, in case Blazor's
+ * binding was not attached yet.
  */
 async function typeSearchTermAndSubmit(page: Page, searchTerm: string) {
-	const maxTypeAttempts = 5;
-	const baseDelay = 150;
+	const maxAttempts = 3;
 
-	for (let typeAttempt = 0; typeAttempt < maxTypeAttempts; typeAttempt++) {
-		const delay = baseDelay + typeAttempt * 75;
-
+	for (let attemptIndex = 0; attemptIndex < maxAttempts; attemptIndex++) {
 		await withSelector(page, selectors.searchInput, async (searchInput) => {
 			assertNonNullish(searchInput, 'Search input not found');
 
 			const currentValue = await searchInput.evaluate((el) => (el as HTMLInputElement).value);
-			logger.debug('Search input value before typing', { currentValue, typeAttempt, delay });
+			logger.debug('Search input value before insert', { currentValue, attemptIndex });
 
-			// Clear via select-all + backspace so Blazor's SignalR binding sees
-			// real keyboard events, unlike .value = '' which it ignores
+			// Select-all + backspace so Blazor's binding sees real editing
+			// events, unlike `.value = ''` which it ignores.
+			await searchInput.click({ clickCount: 3 });
 			if (currentValue.length > 0) {
-				await searchInput.click({ clickCount: 3 });
 				await searchInput.press('Backspace');
-				logger.debug('Cleared search input');
 			}
-
-			await searchInput.type(searchTerm, { delay });
-			logger.debug('Typed search term:', searchTerm);
+			await page.keyboard.sendCharacter(searchTerm);
 		});
 
-		// Read back the value to verify Blazor didn't clobber it
 		const actualValue = await page.$eval(
 			selectors.searchInput,
 			(el) => (el as HTMLInputElement).value
 		);
-		logger.debug('Search input value after typing', { expected: searchTerm, actual: actualValue });
+		logger.debug('Search input value after insert', { expected: searchTerm, actual: actualValue });
 
-		if (actualValue === searchTerm) {
-			// Value is correct — submit the search
-			await withSelector(page, selectors.searchInput, async (searchInput) => {
-				assertNonNullish(searchInput, 'Search input not found');
-				await searchInput.press('Enter');
-				logger.debug('Pressed Enter on search input');
-			});
-			return;
-		}
+		if (actualValue === searchTerm) return;
 
-		logger.debug('Blazor clobbered the search input, retrying type', {
-			typeAttempt,
+		logger.debug('Search input did not take the term, retrying', {
+			attemptIndex,
 			expected: searchTerm,
 			actual: actualValue
 		});
 	}
 
-	throw new Error(
-		`Failed to type search term after ${maxTypeAttempts} attempts — Blazor keeps overwriting the input`
-	);
+	throw new Error(`Failed to enter search term after ${maxAttempts} attempts`);
 }

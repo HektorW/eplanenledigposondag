@@ -2,6 +2,7 @@ import type { Page } from 'puppeteer-core';
 import { assertNonNullish } from '$lib/assert';
 import { waitForElementWithText } from './waitFor';
 import { createLogger } from '../logger';
+import { waitForUnblocked } from './waitForUnblocked';
 
 const logger = createLogger('scrapeBlazor:step3SelectDayView');
 
@@ -9,6 +10,7 @@ export async function selectDayView(page: Page, columnCount: number) {
 	logger.debug('Selecting day view...');
 	const dayBtn = await waitForElementWithText(page, '.k-toolbar .k-button-group button', 'Day');
 	assertNonNullish(dayBtn, 'Day button not found');
+	await waitForUnblocked(page);
 	await dayBtn.click();
 	dayBtn.dispose();
 	logger.debug('Day button clicked');
