@@ -1,3 +1,4 @@
+import { parseFieldId } from '$lib/fields';
 import { loadBookings } from '$lib/server/cache';
 import { createLogger } from '$lib/server/logger';
 import { fetchWeather } from '$lib/server/weather/fetchWeather';
@@ -14,16 +15,25 @@ export const load: PageServerLoad = async ({ url }) => {
 		logger.warn('Invalid date param, falling back to default', { dateParam });
 	}
 
-	const [{ bookings, scrapedAt, fresh }, weatherResponse] = await Promise.all([
-		loadBookings(targetDate),
-		fetchWeather()
-	]);
+	const fieldParam = url.searchParams.get('field');
+	const { fieldId, usedFallback: usedFieldFallback } = parseFieldId(fieldParam);
+
+	if (usedFieldFallback) {
+		logger.warn('Invalid field param, falling back to default', { fieldParam });
+	}
+
+	const { fields, fresh } = await loadBookings(fieldId, targetDate);
 
 	return {
 		date: targetDate.toString(),
-		bookings,
-		scrapedAt,
+		fieldId,
+		fields,
 		fresh,
-		weather: weatherResponse
+		// Streamed — the page shouldn't wait on met.no. Weather is decoration,
+		// so a failure resolves to null instead of erroring the stream.
+		weather: fetchWeather().catch((error: unknown) => {
+			logger.error('Failed to fetch weather', error);
+			return null;
+		})
 	};
 };

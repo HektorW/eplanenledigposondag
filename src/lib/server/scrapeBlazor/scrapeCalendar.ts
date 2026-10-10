@@ -1,9 +1,11 @@
 import { Temporal } from '@js-temporal/polyfill';
+import type { FieldId } from '$lib/fields';
 import type { Booking } from '$lib/types';
 import { createLogger } from '../logger';
 import { forceResetBrowser, withBrowserAndPage } from './getBrowser';
 import { waitUntilPageIsLoaded } from './step1WaitUntilPageIsLoaded';
-import { searchForSorgenfri } from './step2SearchForSorgenfri';
+import { FIELD_SCRAPE_CONFIG } from './fieldScrapeConfig';
+import { searchForField } from './step2SearchForField';
 import { selectDayView } from './step3SelectDayView';
 import { selectTargetDate } from './step4SelectTargetDate';
 import { scrapeAllBookings } from './step5ScrapeBookings';
@@ -57,14 +59,17 @@ function runWithPreempt<T>(work: () => Promise<T>): Promise<T> {
 	});
 }
 
-export async function scrapeCalendar(targetDate: Temporal.PlainDate): Promise<Booking[]> {
+export async function scrapeCalendar(
+	fieldId: FieldId,
+	targetDate: Temporal.PlainDate
+): Promise<Booking[]> {
 	logger.info('Scraping blazor calendar...');
-	logger.debug('Target date:', targetDate.toString());
+	logger.debug('Target:', { fieldId, date: targetDate.toString() });
 
 	// Timeout starts *after* the queue grants a slot, not when the caller
 	// arrived. A scrape that sits in queue behind a long-running one would
 	// otherwise exhaust its budget before doing any real work.
-	return runWithPreempt(() => withTimeout(doScrape(targetDate), SCRAPE_TIMEOUT_MS));
+	return runWithPreempt(() => withTimeout(doScrape(fieldId, targetDate), SCRAPE_TIMEOUT_MS));
 }
 
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
@@ -89,7 +94,9 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 	});
 }
 
-async function doScrape(targetDate: Temporal.PlainDate): Promise<Booking[]> {
+async function doScrape(fieldId: FieldId, targetDate: Temporal.PlainDate): Promise<Booking[]> {
+	const config = FIELD_SCRAPE_CONFIG[fieldId];
+
 	const allBookings = await withBrowserAndPage<Booking[]>(
 		{
 			defaultViewport: { width: 1200, height: 1024 },
@@ -109,8 +116,8 @@ async function doScrape(targetDate: Temporal.PlainDate): Promise<Booking[]> {
 			await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
 
 			await waitUntilPageIsLoaded(page);
-			await searchForSorgenfri(page);
-			await selectDayView(page);
+			await searchForField(page, config);
+			await selectDayView(page, config.dayViewColumnCount);
 			await selectTargetDate(page, targetDate);
 
 			return scrapeAllBookings(page);

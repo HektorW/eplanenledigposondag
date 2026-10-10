@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatScrapedAt } from '$lib/utils';
+	import StatusDot from './StatusDot.svelte';
 
 	type FreshnessIndicatorProps = {
 		scrapedAt: string;
@@ -24,7 +25,7 @@
 
 <p class="freshness" role="status">
 	<button class="freshness-trigger" {...{ interestfor: 'freshness-popover' }}>
-		<span class="freshness-dot" class:refreshing></span>
+		<StatusDot status={refreshing ? 'refreshing' : 'fresh'} />
 		<span class="freshness-text">
 			Hämtades {formattedTime}{#if refreshing}
 				<span class="refreshing-label"> &middot; Uppdaterar...</span>{/if}
@@ -55,21 +56,6 @@
 		padding: 0;
 	}
 
-	.freshness-dot {
-		width: 0.5em;
-		height: 0.5em;
-		border-radius: 50%;
-		flex-shrink: 0;
-		background-color: #4ade80;
-		box-shadow: 0 0 4px #4ade8080;
-
-		&.refreshing {
-			background-color: #facc15;
-			box-shadow: 0 0 4px #facc1580;
-			animation: dot-pulse 1.5s ease-in-out infinite;
-		}
-	}
-
 	.refreshing-label {
 		margin-inline-start: 0.25em;
 		font-size: 0.85em;
@@ -89,18 +75,6 @@
 		font-size: 0.7rem;
 		white-space: nowrap;
 		box-shadow: 0 2px 8px hsl(220deg 60% 50% / 0.15);
-	}
-
-	@keyframes dot-pulse {
-		0%,
-		100% {
-			opacity: 1;
-			transform: scale(1);
-		}
-		50% {
-			opacity: 0.4;
-			transform: scale(0.75);
-		}
 	}
 
 	@keyframes text-pulse {

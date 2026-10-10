@@ -1,19 +1,27 @@
 import type { Page } from 'puppeteer-core';
-import { selectors, texts } from './constants';
+import { selectors } from './constants';
+import type { FieldScrapeConfig } from './fieldScrapeConfig';
 import { filterElementsWithText } from './getElementWithText';
 import { attempt, isFail } from '$lib/attempt';
 import { assertNonNullish } from '$lib/assert';
 import { withSelector } from './withElement';
 import { createLogger } from '../logger';
 
-const logger = createLogger('scrapeBlazor:step2SearchForSorgenfri');
+const logger = createLogger('scrapeBlazor:step2SearchForField');
 
-export async function searchForSorgenfri(page: Page) {
-	await searchAndClickLabels(page);
+export async function searchForField(page: Page, config: FieldScrapeConfig) {
+	await searchAndClickLabels(page, config);
 }
 
-export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<void> {
-	logger.debug('Searching for "sorgenfri" and selecting labels...', { retryCount });
+async function searchAndClickLabels(
+	page: Page,
+	config: FieldScrapeConfig,
+	retryCount = 0
+): Promise<void> {
+	logger.debug('Searching for field and selecting labels...', {
+		searchTerm: config.searchTerm,
+		retryCount
+	});
 
 	function restartSearch() {
 		logger.debug('Trying restart search for labels', { retryCount });
@@ -23,14 +31,10 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 			throw new Error('Max attempts reached for clicking searching and clicking labels');
 		}
 
-		return searchAndClickLabels(page, retryCount + 1);
+		return searchAndClickLabels(page, config, retryCount + 1);
 	}
 
-	// enough to only get sorgenfri hits
-	// avoids additional searches which detaches found labels
-	const searchTerm = 'sor man';
-
-	await typeSearchTermAndSubmit(page, searchTerm);
+	await typeSearchTermAndSubmit(page, config.searchTerm);
 	logger.debug('Search submitted with correct value');
 
 	logger.debug('Looking for correct labels to appear...');
@@ -47,8 +51,8 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 			},
 			{ timeout: 2000 },
 			selectors.resourceLabel,
-			texts.sorgenfriIp,
-			3
+			config.labelText,
+			config.labelCount
 		)
 	);
 	if (isFail(labelsReady)) {
@@ -58,22 +62,22 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 
 	// Labels confirmed present — query them once for clicking
 	const allLabels = await page.$$(selectors.resourceLabel);
-	const sorgenfriLabels = await filterElementsWithText(allLabels, texts.sorgenfriIp);
+	const fieldLabels = await filterElementsWithText(allLabels, config.labelText);
 
-	logger.debug('Found sorgenfri labels, clicking on them:', { count: sorgenfriLabels.length });
+	logger.debug('Found field labels, clicking on them:', { count: fieldLabels.length });
 
-	for (const label of sorgenfriLabels) {
+	for (const label of fieldLabels) {
 		const labelFor = await label.evaluate((el) => el.getAttribute('for'));
 		if (!labelFor) {
-			logger.debug('Label for attribute not found', { index: sorgenfriLabels.indexOf(label) });
-			sorgenfriLabels.forEach((label) => label.dispose());
+			logger.debug('Label for attribute not found', { index: fieldLabels.indexOf(label) });
+			fieldLabels.forEach((label) => label.dispose());
 			return restartSearch();
 		}
 
 		const inputElement = await page.$(`[id="${labelFor}"]`);
 		if (!inputElement) {
-			logger.debug('Input element not found for label', { index: sorgenfriLabels.indexOf(label) });
-			sorgenfriLabels.forEach((label) => label.dispose());
+			logger.debug('Input element not found for label', { index: fieldLabels.indexOf(label) });
+			fieldLabels.forEach((label) => label.dispose());
 			return restartSearch();
 		}
 
@@ -82,16 +86,16 @@ export async function searchAndClickLabels(page: Page, retryCount = 0): Promise<
 			const clickResult = await attempt(() => label.click());
 			if (isFail(clickResult)) {
 				logger.debug('Failed to click label', {
-					index: sorgenfriLabels.indexOf(label),
+					index: fieldLabels.indexOf(label),
 					error: clickResult.error
 				});
-				sorgenfriLabels.forEach((label) => label.dispose());
+				fieldLabels.forEach((label) => label.dispose());
 				return restartSearch();
 			}
 		}
 	}
 
-	sorgenfriLabels.forEach((label) => label.dispose());
+	fieldLabels.forEach((label) => label.dispose());
 }
 
 /**

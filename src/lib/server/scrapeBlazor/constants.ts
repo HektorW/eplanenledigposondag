@@ -1,6 +1,5 @@
 export const texts = {
-	menuItem: 'Resources',
-	sorgenfriIp: 'Sorgenfri IP'
+	menuItem: 'Resources'
 } as const;
 
 export const selectors = {

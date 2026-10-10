@@ -3,10 +3,18 @@
 	import BigLoader from '$lib/components/BigLoader.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import DateStepper from '$lib/components/DateStepper.svelte';
+	import FieldChips, { type FieldChip } from '$lib/components/FieldChips.svelte';
 	import FreshnessIndicator from '$lib/components/FreshnessIndicator.svelte';
 	import SharePanel from '$lib/components/SharePanel.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
-	import type { Booking, TimeSuggestion } from '$lib/types';
+	import { buildPageQuery, FIELD_LIST } from '$lib/fields';
+	import type {
+		Booking,
+		FieldSnapshot,
+		FieldStatus,
+		TimeSuggestion,
+		WeatherResponseData
+	} from '$lib/types';
 	import { getBollTitle } from '$lib/utils';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
 	import { Temporal } from '@js-temporal/polyfill';
@@ -17,7 +25,22 @@
 
 	const targetDate = $derived(Temporal.PlainDate.from(data.date));
 	const bollTitle = $derived(getBollTitle(targetDate));
-	const middayWeather = $derived(getMiddayWeather(data.weather, targetDate));
+
+	// Weather is streamed; keep the previous value across navigations so the
+	// meta line doesn't flicker while the new promise resolves.
+	let weather: WeatherResponseData | null = $state(null);
+	$effect(() => {
+		const pending = data.weather;
+		let cancelled = false;
+		pending.then((result) => {
+			if (!cancelled) weather = result;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	const middayWeather = $derived(getMiddayWeather(weather, targetDate));
 	const loadingMessageList = $derived(buildLoadingMessageList(middayWeather));
 
 	let freshResult: { bookings: Booking[]; scrapedAt: string } | null = $state(null);
@@ -25,9 +48,36 @@
 	let settled = $state(false);
 	let suggestion: TimeSuggestion | null = $state(null);
 
-	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
-	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
+	const cachedSnapshot = $derived(data.fields[data.fieldId]);
+	const bookingList = $derived.by(() => freshResult?.bookings ?? cachedSnapshot?.bookings ?? null);
+	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? cachedSnapshot?.scrapedAt ?? null);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError && !settled);
+
+	function snapshotStatus(snapshot: FieldSnapshot | null): FieldStatus {
+		if (!snapshot) return 'none';
+		return snapshot.stale ? 'stale' : 'fresh';
+	}
+
+	const selectedStatus: FieldStatus = $derived.by(() => {
+		if (refreshing) return 'refreshing';
+		if (freshResult) return 'fresh';
+		return snapshotStatus(cachedSnapshot);
+	});
+
+	const fieldChipList: FieldChip[] = $derived(
+		FIELD_LIST.map((field) => ({
+			id: field.id,
+			name: field.name,
+			query: buildPageQuery({ date: data.date, fieldId: field.id }),
+			status: field.id === data.fieldId ? selectedStatus : snapshotStatus(data.fields[field.id])
+		}))
+	);
+
+	// A suggestion belongs to one field — drop it when switching.
+	$effect(() => {
+		void data.fieldId;
+		suggestion = null;
+	});
 
 	$effect(() => {
 		if (!suggestion || !bookingList) return;
@@ -109,23 +159,29 @@
 
 <main>
 	<h1 class="title">{bollTitle}</h1>
-	<p class="meta">
-		<DateStepper date={targetDate} />
-		{#if middayWeather.middayWeatherEntry}
-			&nbsp;|&nbsp;
-			<img
-				src="weather-icons/{middayWeather.middayWeatherSymbol}.png"
-				alt={middayWeather.middayWeatherLabel ?? middayWeather.middayWeatherSymbol}
-			/>
+	<div class="controls">
+		<p class="meta">
+			<DateStepper date={targetDate} fieldId={data.fieldId} />
+			{#if middayWeather.middayWeatherEntry}
+				&nbsp;|&nbsp;
+				<img
+					src="weather-icons/{middayWeather.middayWeatherSymbol}.png"
+					alt={middayWeather.middayWeatherLabel ?? middayWeather.middayWeatherSymbol}
+				/>
 
-			{#if middayWeather.middayWeatherLabel}
-				&nbsp;<small>({middayWeather.middayWeatherLabel})</small>
+				{#if middayWeather.middayWeatherLabel}
+					&nbsp;<small>({middayWeather.middayWeatherLabel})</small>
+				{/if}
+
+				&nbsp;
+				<span>{middayWeather.middayWeatherTemperature?.toFixed(1)}°</span>
 			{/if}
+		</p>
 
-			&nbsp;
-			<span>{middayWeather.middayWeatherTemperature?.toFixed(1)}°</span>
+		{#if fieldChipList.length > 1}
+			<FieldChips chips={fieldChipList} selectedId={data.fieldId} />
 		{/if}
-	</p>
+	</div>
 
 	{#if bookingList && scrapedAt}
 		<FreshnessIndicator {scrapedAt} {refreshing} />

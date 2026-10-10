@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scrapeCalendar } from './scrapeCalendar';
+import { DEFAULT_FIELD_ID } from '$lib/fields';
 import { getNextSundayDate, todayInAppTz } from '$lib/utils';
 import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 
@@ -27,7 +28,7 @@ function expectValidBookingList(result: Awaited<ReturnType<typeof scrapeCalendar
 describe('scrapeCalendar', () => {
 	it('scrapes next Sunday', async () => {
 		const targetDate = getNextSundayDate();
-		const result = await scrapeCalendar(targetDate);
+		const result = await scrapeCalendar(DEFAULT_FIELD_ID, targetDate);
 		expectValidBookingList(result);
 	});
 
@@ -36,7 +37,7 @@ describe('scrapeCalendar', () => {
 		// Skip if tomorrow is Sunday — already covered above
 		if (tomorrow.dayOfWeek === 7) return;
 
-		const result = await scrapeCalendar(tomorrow);
+		const result = await scrapeCalendar(DEFAULT_FIELD_ID, tomorrow);
 		expectValidBookingList(result);
 	});
 });

@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { Temporal } from '@js-temporal/polyfill';
-import type { Booking } from '$lib/types';
+import { FIELD_LIST, type FieldId } from '$lib/fields';
+import type { Booking, FieldSnapshot } from '$lib/types';
 import { scrapeCalendar, ScrapePreemptedError } from './scrapeBlazor/scrapeCalendar';
 import { createLogger } from './logger';
 import { env } from '$env/dynamic/private';
@@ -35,33 +36,48 @@ function getRedis(): Redis | null {
 
 const memoryCache = new Map<string, CacheEntry>();
 
-function cacheKey(targetDate: Temporal.PlainDate): string {
-	return `bookings:${targetDate.toString()}`;
+function cacheKey(fieldId: FieldId, targetDate: Temporal.PlainDate): string {
+	return `bookings:${fieldId}:${targetDate.toString()}`;
 }
 
 function isStale(entry: CacheEntry): boolean {
 	return Date.now() - new Date(entry.scrapedAt).getTime() > STALE_AFTER_MS;
 }
 
-async function readCache(targetDate: Temporal.PlainDate): Promise<CacheEntry | null> {
-	const key = cacheKey(targetDate);
+/** Reads every field's entry for one date — a single MGET when Redis is configured. */
+async function readCacheForDate(
+	fieldIdList: readonly FieldId[],
+	targetDate: Temporal.PlainDate
+): Promise<Map<FieldId, CacheEntry>> {
+	const keyList = fieldIdList.map((fieldId) => cacheKey(fieldId, targetDate));
 	const redis = getRedis();
 
+	let entryList: (CacheEntry | null | undefined)[];
 	if (redis) {
 		try {
-			const entry = await redis.get<CacheEntry>(key);
-			return entry ?? null;
+			entryList = await redis.mget<(CacheEntry | null)[]>(...keyList);
 		} catch (error) {
 			logger.error('Failed to read from Redis cache', error);
-			return null;
+			entryList = [];
 		}
+	} else {
+		entryList = keyList.map((key) => memoryCache.get(key));
 	}
 
-	return memoryCache.get(key) ?? null;
+	const result = new Map<FieldId, CacheEntry>();
+	fieldIdList.forEach((fieldId, index) => {
+		const entry = entryList[index];
+		if (entry) result.set(fieldId, entry);
+	});
+	return result;
 }
 
-async function writeCache(targetDate: Temporal.PlainDate, entry: CacheEntry): Promise<void> {
-	const key = cacheKey(targetDate);
+async function writeCache(
+	fieldId: FieldId,
+	targetDate: Temporal.PlainDate,
+	entry: CacheEntry
+): Promise<void> {
+	const key = cacheKey(fieldId, targetDate);
 	const redis = getRedis();
 
 	if (redis) {
@@ -81,13 +97,13 @@ async function writeCache(targetDate: Temporal.PlainDate, entry: CacheEntry): Pr
 const inFlightScrapes = new Map<string, Promise<CacheEntry>>();
 
 /**
- * Scrapes and persists results. Concurrent callers for the same date
+ * Scrapes and persists results. Concurrent callers for the same field + date
  * share one in-flight scrape instead of each launching their own Puppeteer run.
  * The scrape itself owns its timeout (see scrapeCalendar) — here we only
- * dedupe by date.
+ * dedupe by key.
  */
-function scrapeAndCache(targetDate: Temporal.PlainDate): Promise<CacheEntry> {
-	const key = cacheKey(targetDate);
+function scrapeAndCache(fieldId: FieldId, targetDate: Temporal.PlainDate): Promise<CacheEntry> {
+	const key = cacheKey(fieldId, targetDate);
 
 	const existing = inFlightScrapes.get(key);
 	if (existing) {
@@ -97,10 +113,10 @@ function scrapeAndCache(targetDate: Temporal.PlainDate): Promise<CacheEntry> {
 
 	logger.info('Scraping for cache...');
 	const promise = (async () => {
-		const bookings = await scrapeCalendar(targetDate);
+		const bookings = await scrapeCalendar(fieldId, targetDate);
 		const entry: CacheEntry = { bookings, scrapedAt: new Date().toISOString() };
-		await writeCache(targetDate, entry);
-		logger.info('Scrape complete, cached', { count: bookings.length });
+		await writeCache(fieldId, targetDate, entry);
+		logger.info('Scrape complete, cached', { key, count: bookings.length });
 		return entry;
 	})().finally(() => {
 		inFlightScrapes.delete(key);
@@ -128,34 +144,41 @@ function withPreemptSentinel(scrape: Promise<CacheEntry>): Promise<FreshResult> 
 }
 
 /**
- * Reads persistent cache. Returns cached data + a streaming promise for fresh data if stale.
+ * Reads the cache for every field on `targetDate`, so the page can show each
+ * field's status. Only `selectedFieldId` is scraped — when its entry is stale
+ * or missing, `fresh` streams the result of a new scrape.
  */
-export async function loadBookings(targetDate: Temporal.PlainDate): Promise<{
-	bookings: Booking[] | null;
-	scrapedAt: string | null;
+export async function loadBookings(
+	selectedFieldId: FieldId,
+	targetDate: Temporal.PlainDate
+): Promise<{
+	fields: Record<FieldId, FieldSnapshot | null>;
 	fresh: Promise<FreshResult> | null;
 }> {
-	const cached = await readCache(targetDate);
+	const fieldIdList = FIELD_LIST.map((field) => field.id);
+	const cached = await readCacheForDate(fieldIdList, targetDate);
 
-	if (cached && !isStale(cached)) {
-		logger.debug('Serving fresh cache');
-		return { bookings: cached.bookings, scrapedAt: cached.scrapedAt, fresh: null };
+	const fields = Object.fromEntries(
+		fieldIdList.map((fieldId) => {
+			const entry = cached.get(fieldId);
+			const snapshot: FieldSnapshot | null = entry
+				? { bookings: entry.bookings, scrapedAt: entry.scrapedAt, stale: isStale(entry) }
+				: null;
+			return [fieldId, snapshot];
+		})
+	) as Record<FieldId, FieldSnapshot | null>;
+
+	const selected = fields[selectedFieldId];
+	if (selected && !selected.stale) {
+		logger.debug('Serving fresh cache', { selectedFieldId });
+		return { fields, fresh: null };
 	}
 
-	if (cached) {
-		logger.debug('Serving stale cache, streaming fresh scrape');
-		return {
-			bookings: cached.bookings,
-			scrapedAt: cached.scrapedAt,
-			fresh: withPreemptSentinel(scrapeAndCache(targetDate))
-		};
-	}
-
-	// No cache — stream the scrape
-	logger.info('No cache, streaming initial scrape');
-	return {
-		bookings: null,
-		scrapedAt: null,
-		fresh: withPreemptSentinel(scrapeAndCache(targetDate))
-	};
+	logger.debug(
+		selected ? 'Serving stale cache, streaming fresh scrape' : 'No cache, streaming initial scrape',
+		{
+			selectedFieldId
+		}
+	);
+	return { fields, fresh: withPreemptSentinel(scrapeAndCache(selectedFieldId, targetDate)) };
 }

@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { buildPageQuery, type FieldId } from '$lib/fields';
 	import { canStepToNextDay, canStepToPrevDay } from '$lib/utils';
 	import type { Temporal } from '@js-temporal/polyfill';
 
 	type DateStepperProps = {
 		date: Temporal.PlainDate;
+		fieldId: FieldId;
 	};
 
-	const { date }: DateStepperProps = $props();
+	const { date, fieldId }: DateStepperProps = $props();
 
 	const prevDate = $derived(date.subtract({ days: 1 }));
 	const nextDate = $derived(date.add({ days: 1 }));
@@ -27,7 +29,7 @@
 	{#if canGoPrev}
 		<a
 			class="step"
-			href={resolve(`/?date=${prevDate.toString()}`)}
+			href={resolve(`/${buildPageQuery({ date: prevDate.toString(), fieldId })}`)}
 			rel="prev"
 			aria-label="Föregående dag">‹</a
 		>
@@ -40,7 +42,7 @@
 	{#if canGoNext}
 		<a
 			class="step"
-			href={resolve(`/?date=${nextDate.toString()}`)}
+			href={resolve(`/${buildPageQuery({ date: nextDate.toString(), fieldId })}`)}
 			rel="next"
 			aria-label="Nästa dag">›</a
 		>
