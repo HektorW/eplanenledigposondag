@@ -136,3 +136,65 @@ describe('Calendar court click', () => {
 		await expect.poll(() => suggestionElement()?.style.gridColumn).toBe(COURT_GRID_COLUMN.a);
 	});
 });
+
+describe('Calendar bookings outside the visible hours', () => {
+	function bookingElements(): HTMLElement[] {
+		return Array.from(document.querySelectorAll<HTMLElement>('.booking-entry'));
+	}
+
+	it('clamps a booking that starts before the calendar to the first row', async () => {
+		render(Calendar, {
+			bookings: [
+				makeBooking({
+					resourceId: fullCourtId,
+					startTimeFormatted: '8:00',
+					endTimeFormatted: '16:00'
+				})
+			],
+			weatherEntries: []
+		});
+		await tick();
+
+		const [booking] = bookingElements();
+		expect(booking.style.gridRow).toBe(
+			`${minutesToGridRow(CALENDAR_START_MINUTES)} / ${minutesToGridRow(16 * 60)}`
+		);
+		// The label keeps the real times
+		expect(booking.textContent).toContain('8:00 - 16:00');
+	});
+
+	it('clamps a booking that ends after the calendar to the last row', async () => {
+		render(Calendar, {
+			bookings: [
+				makeBooking({
+					resourceId: halfCourtAId,
+					startTimeFormatted: '18:00',
+					endTimeFormatted: '22:00'
+				})
+			],
+			weatherEntries: []
+		});
+		await tick();
+
+		const [booking] = bookingElements();
+		expect(booking.style.gridRow).toBe(
+			`${minutesToGridRow(18 * 60)} / ${minutesToGridRow(CALENDAR_END_MINUTES)}`
+		);
+	});
+
+	it('hides bookings entirely outside the visible hours', async () => {
+		render(Calendar, {
+			bookings: [
+				makeBooking({
+					resourceId: halfCourtBId,
+					startTimeFormatted: '7:00',
+					endTimeFormatted: '8:30'
+				})
+			],
+			weatherEntries: []
+		});
+		await tick();
+
+		expect(bookingElements()).toHaveLength(0);
+	});
+});

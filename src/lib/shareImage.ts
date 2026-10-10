@@ -1,12 +1,11 @@
 import type { Temporal } from '@js-temporal/polyfill';
 import { assertNonNullish } from '$lib/assert';
 import {
-	CALENDAR_END_MINUTES,
 	CALENDAR_HOURS,
 	CALENDAR_ROWS,
 	CALENDAR_ROWS_PER_HOUR,
 	CALENDAR_START_HOUR,
-	CALENDAR_START_MINUTES,
+	clampToCalendar,
 	COURT_ID_LIST,
 	COURT_LABEL,
 	COURT_RESOURCE_ID,
@@ -128,10 +127,11 @@ export async function generateShareImage(params: {
 	for (const booking of bookings) {
 		const start = formattedTimeToMinutes(booking.startTimeFormatted);
 		const end = formattedTimeToMinutes(booking.endTimeFormatted);
-		if (start < CALENDAR_START_MINUTES || end > CALENDAR_END_MINUTES) continue;
+		const visible = clampToCalendar(start, end);
+		if (!visible) continue;
 
-		const startRow = minutesToRowIndex(start);
-		const endRow = minutesToRowIndex(end);
+		const startRow = minutesToRowIndex(visible.start);
+		const endRow = minutesToRowIndex(visible.end);
 
 		let x: number, w: number;
 		const halfCourt = COURT_ID_LIST.find(

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	CALENDAR_END_MINUTES,
 	CALENDAR_START_MINUTES,
+	clampToCalendar,
 	hasConflict,
 	minutesToGridRow,
 	minutesToRowIndex
@@ -101,5 +102,30 @@ describe('hasConflict', () => {
 		];
 		expect(hasConflict(bookings, 'a', 11 * 60, 60)).toBe(false);
 		expect(hasConflict(bookings, 'a', 9 * 60, 60)).toBe(false);
+	});
+});
+
+describe('clampToCalendar', () => {
+	it('leaves ranges inside the calendar untouched', () => {
+		expect(clampToCalendar(10 * 60, 11 * 60)).toEqual({ start: 10 * 60, end: 11 * 60 });
+	});
+
+	it('clamps a booking that starts before the calendar', () => {
+		expect(clampToCalendar(8 * 60, 16 * 60)).toEqual({
+			start: CALENDAR_START_MINUTES,
+			end: 16 * 60
+		});
+	});
+
+	it('clamps a booking that ends after the calendar', () => {
+		expect(clampToCalendar(18 * 60, 22 * 60)).toEqual({
+			start: 18 * 60,
+			end: CALENDAR_END_MINUTES
+		});
+	});
+
+	it('returns null for ranges entirely outside the calendar', () => {
+		expect(clampToCalendar(7 * 60, CALENDAR_START_MINUTES)).toBeNull();
+		expect(clampToCalendar(CALENDAR_END_MINUTES, 21 * 60)).toBeNull();
 	});
 });

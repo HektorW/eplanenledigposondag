@@ -46,6 +46,21 @@ export function minutesToRowIndex(minutes: number): number {
 	return (minutes - CALENDAR_START_MINUTES) / CALENDAR_STEP_MINUTES;
 }
 
+/**
+ * Clamps a time range to the visible calendar hours. Returns null when the
+ * range falls entirely outside them. Bookings often start before
+ * CALENDAR_START_HOUR (e.g. school use 8–16); without clamping they map to
+ * negative grid rows, which CSS counts from the end of the grid.
+ */
+export function clampToCalendar(
+	startMinutes: number,
+	endMinutes: number
+): { start: number; end: number } | null {
+	const start = Math.max(startMinutes, CALENDAR_START_MINUTES);
+	const end = Math.min(endMinutes, CALENDAR_END_MINUTES);
+	return start < end ? { start, end } : null;
+}
+
 export function hasConflict(
 	bookings: Booking[],
 	court: Court,
