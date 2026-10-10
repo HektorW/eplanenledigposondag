@@ -47,19 +47,26 @@ export function minutesToRowIndex(minutes: number): number {
 }
 
 /**
- * Clamps a time range to the visible calendar hours. Returns null when the
- * range falls entirely outside them. Bookings often start before
- * CALENDAR_START_HOUR (e.g. school use 8–16); without clamping they map to
- * negative grid rows, which CSS counts from the end of the grid.
+ * Clamps a time range to the calendar hours. Returns null when nothing of the
+ * range is left. Bookings often start before CALENDAR_START_HOUR (e.g. school
+ * use 8–16); unclamped they map to negative grid rows, which CSS counts from
+ * the end of the grid.
+ *
+ * The page grid grows implicit rows past CALENDAR_END_HOUR, so it only clamps
+ * the start. The share image has a fixed canvas and also clamps the end.
  */
 export function clampToCalendar(
 	startMinutes: number,
-	endMinutes: number
+	endMinutes: number,
+	{ clampEnd = true }: { clampEnd?: boolean } = {}
 ): { start: number; end: number } | null {
 	const start = Math.max(startMinutes, CALENDAR_START_MINUTES);
-	const end = Math.min(endMinutes, CALENDAR_END_MINUTES);
+	const end = clampEnd ? Math.min(endMinutes, CALENDAR_END_MINUTES) : endMinutes;
 	return start < end ? { start, end } : null;
 }
+
+/** Bookings shorter than this get a tighter layout. */
+export const COMPACT_BOOKING_MAX_MINUTES = 60;
 
 export function hasConflict(
 	bookings: Booking[],

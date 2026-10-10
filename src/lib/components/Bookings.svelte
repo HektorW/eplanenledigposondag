@@ -1,6 +1,8 @@
 <script lang="ts">
 	import {
+		CALENDAR_STEP_MINUTES,
 		clampToCalendar,
+		COMPACT_BOOKING_MAX_MINUTES,
 		COURT_GRID_COLUMN,
 		FULL_COURT_GRID_COLUMN,
 		minutesToGridRow
@@ -22,7 +24,7 @@
 	function getMinutes(entry: Booking) {
 		const start = formattedTimeToMinutes(entry.startTimeFormatted);
 		const end = formattedTimeToMinutes(entry.endTimeFormatted);
-		return { start, end, visible: clampToCalendar(start, end) };
+		return { start, end, visible: clampToCalendar(start, end, { clampEnd: false }) };
 	}
 </script>
 
@@ -32,6 +34,10 @@
 		{#if minutes.visible}
 			<article
 				class="booking-entry"
+				class:booking-entry--compact={minutes.visible.end - minutes.visible.start <
+					COMPACT_BOOKING_MAX_MINUTES}
+				class:booking-entry--single-line={minutes.visible.end - minutes.visible.start <=
+					CALENDAR_STEP_MINUTES}
 				style:grid-column={column}
 				style:grid-row={`${minutesToGridRow(minutes.visible.start)} / ${minutesToGridRow(minutes.visible.end)}`}
 			>
@@ -69,6 +75,44 @@
 
 		&--time {
 			@include block.secondary;
+		}
+	}
+
+	// Under an hour the regular padding doesn't leave room for name + time.
+	// Tighten it and keep the name to one line.
+	.booking-entry--compact {
+		line-height: 1.1;
+		overflow: hidden;
+		padding-block: 0.3rem;
+
+		.booking-entry--name {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.booking-entry--time {
+			margin-top: 0.1rem;
+			white-space: nowrap;
+		}
+	}
+
+	// A single row (15 min) only fits one line — name and time share it and
+	// the name gives way first.
+	.booking-entry--single-line {
+		align-items: center;
+		display: flex;
+		gap: 0.5em;
+		line-height: 1;
+		padding-block: 0.15rem;
+
+		.booking-entry--name {
+			min-width: 0;
+		}
+
+		.booking-entry--time {
+			flex-shrink: 0;
+			margin-top: 0;
 		}
 	}
 </style>

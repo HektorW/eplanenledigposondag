@@ -163,7 +163,7 @@ describe('Calendar bookings outside the visible hours', () => {
 		expect(booking.textContent).toContain('8:00 - 16:00');
 	});
 
-	it('clamps a booking that ends after the calendar to the last row', async () => {
+	it('lets a booking run past the end of the calendar', async () => {
 		render(Calendar, {
 			bookings: [
 				makeBooking({
@@ -178,11 +178,61 @@ describe('Calendar bookings outside the visible hours', () => {
 
 		const [booking] = bookingElements();
 		expect(booking.style.gridRow).toBe(
-			`${minutesToGridRow(18 * 60)} / ${minutesToGridRow(CALENDAR_END_MINUTES)}`
+			`${minutesToGridRow(18 * 60)} / ${minutesToGridRow(22 * 60)}`
 		);
 	});
 
-	it('hides bookings entirely outside the visible hours', async () => {
+	it('uses the compact layout under an hour and a single line for one row', async () => {
+		render(Calendar, {
+			bookings: [
+				makeBooking({
+					bookingId: 'short',
+					resourceId: halfCourtAId,
+					startTimeFormatted: '16:30',
+					endTimeFormatted: '17:00'
+				}),
+				makeBooking({
+					bookingId: 'long',
+					resourceId: halfCourtBId,
+					startTimeFormatted: '17:00',
+					endTimeFormatted: '18:00'
+				}),
+				// 30 min visible after clamping to 9:00
+				makeBooking({
+					bookingId: 'clamped',
+					resourceId: fullCourtId,
+					startTimeFormatted: '8:00',
+					endTimeFormatted: '9:30'
+				}),
+				makeBooking({
+					bookingId: 'one-row',
+					resourceId: halfCourtBId,
+					startTimeFormatted: '10:00',
+					endTimeFormatted: '10:15'
+				})
+			],
+			weatherEntries: []
+		});
+		await tick();
+
+		const layoutByTime = Object.fromEntries(
+			bookingElements().map((el) => [
+				el.querySelector('.booking-entry--time')?.textContent?.trim(),
+				{
+					compact: el.classList.contains('booking-entry--compact'),
+					singleLine: el.classList.contains('booking-entry--single-line')
+				}
+			])
+		);
+		expect(layoutByTime).toEqual({
+			'16:30 - 17:00': { compact: true, singleLine: false },
+			'17:00 - 18:00': { compact: false, singleLine: false },
+			'8:00 - 9:30': { compact: true, singleLine: false },
+			'10:00 - 10:15': { compact: true, singleLine: true }
+		});
+	});
+
+	it('hides bookings that end before the calendar starts', async () => {
 		render(Calendar, {
 			bookings: [
 				makeBooking({

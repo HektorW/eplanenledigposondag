@@ -94,6 +94,9 @@
 		grid-template-columns: var(--columns);
 		grid-template-rows: auto // header
 			repeat(var(--row--count), var(--row--height));
+		// Bookings running past CALENDAR_END_HOUR create implicit rows — keep
+		// them the same height so the block length still matches its duration.
+		grid-auto-rows: var(--row--height);
 
 		column-gap: var(--column--gap);
 		row-gap: var(--row--gap);

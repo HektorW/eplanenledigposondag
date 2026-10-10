@@ -128,4 +128,16 @@ describe('clampToCalendar', () => {
 		expect(clampToCalendar(7 * 60, CALENDAR_START_MINUTES)).toBeNull();
 		expect(clampToCalendar(CALENDAR_END_MINUTES, 21 * 60)).toBeNull();
 	});
+
+	it('leaves the end alone with clampEnd: false', () => {
+		expect(clampToCalendar(18 * 60, 22 * 60, { clampEnd: false })).toEqual({
+			start: 18 * 60,
+			end: 22 * 60
+		});
+		expect(clampToCalendar(20 * 60, 21 * 60 + 30, { clampEnd: false })).toEqual({
+			start: 20 * 60,
+			end: 21 * 60 + 30
+		});
+		expect(clampToCalendar(7 * 60, 8 * 60, { clampEnd: false })).toBeNull();
+	});
 });
