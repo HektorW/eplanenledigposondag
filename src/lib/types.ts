@@ -9,16 +9,6 @@ export type Booking = {
 	additionalInfo?: string | null;
 };
 
-/** Cached bookings for one field on one date, as handed to the page. */
-export type FieldSnapshot = {
-	bookings: Booking[];
-	scrapedAt: string;
-	stale: boolean;
-};
-
-/** Chip/indicator status. Fresh = green, stale = yellow, refreshing = pulsing yellow, none = gray. */
-export type FieldStatus = 'fresh' | 'stale' | 'refreshing' | 'none';
-
 export type Court = 'a' | 'b';
 
 export type TimeSuggestion = {

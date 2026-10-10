@@ -1,14 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { FieldStatus } from '$lib/types';
-	import StatusDot from './StatusDot.svelte';
 
 	export type FieldChip = {
 		id: string;
 		name: string;
 		/** Page query string, e.g. `?date=2026-10-11&field=x` */
 		query: `?${string}`;
-		status: FieldStatus;
 	};
 
 	type FieldChipsProps = {
@@ -27,7 +24,6 @@
 			aria-current={chip.id === selectedId ? 'page' : undefined}
 			data-testid="field-chip-{chip.id}"
 		>
-			<StatusDot status={chip.status} />
 			{chip.name}
 		</a>
 	{/each}
@@ -46,14 +42,11 @@
 	}
 
 	.field-chip {
-		align-items: center;
 		border: 1px solid var(--c--grid--line);
 		border-radius: 999px;
 		color: inherit;
-		display: inline-flex;
 		flex-shrink: 0;
 		font-size: 0.875rem;
-		gap: 0.4em;
 		padding: 0.3em 0.8em;
 		text-decoration: none;
 		white-space: nowrap;

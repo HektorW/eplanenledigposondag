@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { Temporal } from '@js-temporal/polyfill';
-import { FIELD_LIST, type FieldId } from '$lib/fields';
-import type { Booking, FieldSnapshot } from '$lib/types';
+import type { FieldId } from '$lib/fields';
+import type { Booking } from '$lib/types';
 import { scrapeCalendar, ScrapePreemptedError } from './scrapeBlazor/scrapeCalendar';
 import { createLogger } from './logger';
 import { env } from '$env/dynamic/private';
@@ -44,32 +44,24 @@ function isStale(entry: CacheEntry): boolean {
 	return Date.now() - new Date(entry.scrapedAt).getTime() > STALE_AFTER_MS;
 }
 
-/** Reads every field's entry for one date — a single MGET when Redis is configured. */
-async function readCacheForDate(
-	fieldIdList: readonly FieldId[],
+async function readCache(
+	fieldId: FieldId,
 	targetDate: Temporal.PlainDate
-): Promise<Map<FieldId, CacheEntry>> {
-	const keyList = fieldIdList.map((fieldId) => cacheKey(fieldId, targetDate));
+): Promise<CacheEntry | null> {
+	const key = cacheKey(fieldId, targetDate);
 	const redis = getRedis();
 
-	let entryList: (CacheEntry | null | undefined)[];
 	if (redis) {
 		try {
-			entryList = await redis.mget<(CacheEntry | null)[]>(...keyList);
+			const entry = await redis.get<CacheEntry>(key);
+			return entry ?? null;
 		} catch (error) {
 			logger.error('Failed to read from Redis cache', error);
-			entryList = [];
+			return null;
 		}
-	} else {
-		entryList = keyList.map((key) => memoryCache.get(key));
 	}
 
-	const result = new Map<FieldId, CacheEntry>();
-	fieldIdList.forEach((fieldId, index) => {
-		const entry = entryList[index];
-		if (entry) result.set(fieldId, entry);
-	});
-	return result;
+	return memoryCache.get(key) ?? null;
 }
 
 async function writeCache(
@@ -144,41 +136,38 @@ function withPreemptSentinel(scrape: Promise<CacheEntry>): Promise<FreshResult> 
 }
 
 /**
- * Reads the cache for every field on `targetDate`, so the page can show each
- * field's status. Only `selectedFieldId` is scraped — when its entry is stale
- * or missing, `fresh` streams the result of a new scrape.
+ * Reads persistent cache for one field. Returns cached data + a streaming
+ * promise for fresh data if stale or missing.
  */
 export async function loadBookings(
-	selectedFieldId: FieldId,
+	fieldId: FieldId,
 	targetDate: Temporal.PlainDate
 ): Promise<{
-	fields: Record<FieldId, FieldSnapshot | null>;
+	bookings: Booking[] | null;
+	scrapedAt: string | null;
 	fresh: Promise<FreshResult> | null;
 }> {
-	const fieldIdList = FIELD_LIST.map((field) => field.id);
-	const cached = await readCacheForDate(fieldIdList, targetDate);
+	const cached = await readCache(fieldId, targetDate);
 
-	const fields = Object.fromEntries(
-		fieldIdList.map((fieldId) => {
-			const entry = cached.get(fieldId);
-			const snapshot: FieldSnapshot | null = entry
-				? { bookings: entry.bookings, scrapedAt: entry.scrapedAt, stale: isStale(entry) }
-				: null;
-			return [fieldId, snapshot];
-		})
-	) as Record<FieldId, FieldSnapshot | null>;
-
-	const selected = fields[selectedFieldId];
-	if (selected && !selected.stale) {
-		logger.debug('Serving fresh cache', { selectedFieldId });
-		return { fields, fresh: null };
+	if (cached && !isStale(cached)) {
+		logger.debug('Serving fresh cache', { fieldId });
+		return { bookings: cached.bookings, scrapedAt: cached.scrapedAt, fresh: null };
 	}
 
-	logger.debug(
-		selected ? 'Serving stale cache, streaming fresh scrape' : 'No cache, streaming initial scrape',
-		{
-			selectedFieldId
-		}
-	);
-	return { fields, fresh: withPreemptSentinel(scrapeAndCache(selectedFieldId, targetDate)) };
+	if (cached) {
+		logger.debug('Serving stale cache, streaming fresh scrape', { fieldId });
+		return {
+			bookings: cached.bookings,
+			scrapedAt: cached.scrapedAt,
+			fresh: withPreemptSentinel(scrapeAndCache(fieldId, targetDate))
+		};
+	}
+
+	// No cache — stream the scrape
+	logger.info('No cache, streaming initial scrape', { fieldId });
+	return {
+		bookings: null,
+		scrapedAt: null,
+		fresh: withPreemptSentinel(scrapeAndCache(fieldId, targetDate))
+	};
 }

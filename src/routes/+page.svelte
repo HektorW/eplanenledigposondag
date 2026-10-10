@@ -8,13 +8,7 @@
 	import SharePanel from '$lib/components/SharePanel.svelte';
 	import { buildLoadingMessageList } from '$lib/loadingMessages';
 	import { buildPageQuery, FIELD_LIST } from '$lib/fields';
-	import type {
-		Booking,
-		FieldSnapshot,
-		FieldStatus,
-		TimeSuggestion,
-		WeatherResponseData
-	} from '$lib/types';
+	import type { Booking, TimeSuggestion, WeatherResponseData } from '$lib/types';
 	import { getBollTitle } from '$lib/utils';
 	import { getMiddayWeather } from '$lib/weather/getMiddayWeather';
 	import { Temporal } from '@js-temporal/polyfill';
@@ -48,28 +42,15 @@
 	let settled = $state(false);
 	let suggestion: TimeSuggestion | null = $state(null);
 
-	const cachedSnapshot = $derived(data.fields[data.fieldId]);
-	const bookingList = $derived.by(() => freshResult?.bookings ?? cachedSnapshot?.bookings ?? null);
-	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? cachedSnapshot?.scrapedAt ?? null);
+	const bookingList = $derived.by(() => freshResult?.bookings ?? data.bookings);
+	const scrapedAt = $derived.by(() => freshResult?.scrapedAt ?? data.scrapedAt);
 	const refreshing = $derived.by(() => !!data.fresh && !freshResult && !scrapeError && !settled);
-
-	function snapshotStatus(snapshot: FieldSnapshot | null): FieldStatus {
-		if (!snapshot) return 'none';
-		return snapshot.stale ? 'stale' : 'fresh';
-	}
-
-	const selectedStatus: FieldStatus = $derived.by(() => {
-		if (refreshing) return 'refreshing';
-		if (freshResult) return 'fresh';
-		return snapshotStatus(cachedSnapshot);
-	});
 
 	const fieldChipList: FieldChip[] = $derived(
 		FIELD_LIST.map((field) => ({
 			id: field.id,
 			name: field.name,
-			query: buildPageQuery({ date: data.date, fieldId: field.id }),
-			status: field.id === data.fieldId ? selectedStatus : snapshotStatus(data.fields[field.id])
+			query: buildPageQuery({ date: data.date, fieldId: field.id })
 		}))
 	);
 

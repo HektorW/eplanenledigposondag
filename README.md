@@ -8,7 +8,7 @@ Scrapes `malmo.rbok.se` with Puppeteer + `@sparticuz/chromium-min`. Caches resul
 
 1. `?date=YYYY-MM-DD` query param picks target date. Missing/invalid → next Sunday. Constrained to today through `MAX_FUTURE_DAYS` (10).
 2. `?field=<id>` picks the field (pitch) from `FIELD_LIST` in `src/lib/fields.ts`. Missing/unknown → first field. Chips to switch field show once more than one field is configured.
-3. `loadBookings` reads Redis cache for every field on the date (one `MGET`, keys `bookings:{field}:{date}`). Only the selected field is scraped. Fresh (<5 min) → serve. Stale or missing → stream fresh scrape to client.
+3. `loadBookings` reads Redis cache for the selected field (key `bookings:{field}:{date}`). Fresh (<5 min) → serve. Stale or missing → stream fresh scrape to client.
 4. Scraper drives Blazor calendar in 5 steps (`src/lib/server/scrapeBlazor/step*.ts`), using the field's search term and labels from `fieldScrapeConfig.ts`.
 5. Weather streamed from met.no locationforecast API — never blocks the page.
 

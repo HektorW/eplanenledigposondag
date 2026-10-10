@@ -22,12 +22,13 @@ export const load: PageServerLoad = async ({ url }) => {
 		logger.warn('Invalid field param, falling back to default', { fieldParam });
 	}
 
-	const { fields, fresh } = await loadBookings(fieldId, targetDate);
+	const { bookings, scrapedAt, fresh } = await loadBookings(fieldId, targetDate);
 
 	return {
 		date: targetDate.toString(),
 		fieldId,
-		fields,
+		bookings,
+		scrapedAt,
 		fresh,
 		// Streamed — the page shouldn't wait on met.no. Weather is decoration,
 		// so a failure resolves to null instead of erroring the stream.
