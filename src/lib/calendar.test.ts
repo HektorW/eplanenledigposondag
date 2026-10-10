@@ -4,6 +4,7 @@ import {
 	CALENDAR_START_MINUTES,
 	clampToCalendar,
 	hasConflict,
+	snapToGridStep,
 	minutesToGridRow,
 	minutesToRowIndex
 } from './calendar';
@@ -139,5 +140,40 @@ describe('clampToCalendar', () => {
 			end: 21 * 60 + 30
 		});
 		expect(clampToCalendar(7 * 60, 8 * 60, { clampEnd: false })).toBeNull();
+	});
+});
+
+describe('snapToGridStep', () => {
+	const t = (hours: number, minutes = 0) => hours * 60 + minutes;
+
+	it('leaves on-grid ranges untouched', () => {
+		expect(snapToGridStep({ start: t(17), end: t(18, 30) })).toEqual({
+			start: t(17),
+			end: t(18, 30)
+		});
+	});
+
+	it('rounds off-grid times to the nearest step', () => {
+		expect(snapToGridStep({ start: t(17), end: t(18, 25) })).toEqual({
+			start: t(17),
+			end: t(18, 30)
+		});
+		expect(snapToGridStep({ start: t(18, 25), end: t(19, 50) })).toEqual({
+			start: t(18, 30),
+			end: t(19, 45)
+		});
+	});
+
+	it('keeps back-to-back bookings touching', () => {
+		const first = snapToGridStep({ start: t(18, 25), end: t(19, 50) });
+		const second = snapToGridStep({ start: t(19, 50), end: t(21, 15) });
+		expect(first.end).toBe(second.start);
+	});
+
+	it('never collapses a range below one step', () => {
+		expect(snapToGridStep({ start: t(10), end: t(10, 5) })).toEqual({
+			start: t(10),
+			end: t(10, 15)
+		});
 	});
 });

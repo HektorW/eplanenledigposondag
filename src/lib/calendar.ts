@@ -65,6 +65,23 @@ export function clampToCalendar(
 	return start < end ? { start, end } : null;
 }
 
+/**
+ * Snaps a range to the nearest grid step (CALENDAR_STEP_MINUTES). Bookings
+ * can end on any minute (e.g. 17:00–18:25), and a fractional grid row is
+ * invalid CSS — the block loses its placement entirely. Rounding to nearest
+ * keeps back-to-back bookings touching without overlapping. Never collapses
+ * a range below one step.
+ */
+export function snapToGridStep({ start, end }: { start: number; end: number }): {
+	start: number;
+	end: number;
+} {
+	const snap = (minutes: number) =>
+		Math.round(minutes / CALENDAR_STEP_MINUTES) * CALENDAR_STEP_MINUTES;
+	const snappedStart = snap(start);
+	return { start: snappedStart, end: Math.max(snap(end), snappedStart + CALENDAR_STEP_MINUTES) };
+}
+
 /** Bookings shorter than this get a tighter layout. */
 export const COMPACT_BOOKING_MAX_MINUTES = 60;
 

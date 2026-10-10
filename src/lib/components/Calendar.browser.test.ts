@@ -232,6 +232,36 @@ describe('Calendar bookings outside the visible hours', () => {
 		});
 	});
 
+	it('snaps bookings with off-grid times to whole rows', async () => {
+		render(Calendar, {
+			bookings: [
+				makeBooking({
+					bookingId: 'a',
+					resourceId: halfCourtAId,
+					startTimeFormatted: '17:00',
+					endTimeFormatted: '18:25'
+				}),
+				makeBooking({
+					bookingId: 'b',
+					resourceId: halfCourtAId,
+					startTimeFormatted: '18:25',
+					endTimeFormatted: '19:50'
+				})
+			],
+			weatherEntries: []
+		});
+		await tick();
+
+		const [first, second] = bookingElements();
+		expect(first.style.gridRow).toBe(
+			`${minutesToGridRow(17 * 60)} / ${minutesToGridRow(18 * 60 + 30)}`
+		);
+		expect(second.style.gridRow).toBe(
+			`${minutesToGridRow(18 * 60 + 30)} / ${minutesToGridRow(19 * 60 + 45)}`
+		);
+		expect(first.textContent).toContain('17:00 - 18:25');
+	});
+
 	it('hides bookings that end before the calendar starts', async () => {
 		render(Calendar, {
 			bookings: [

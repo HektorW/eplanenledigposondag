@@ -5,7 +5,8 @@
 		COMPACT_BOOKING_MAX_MINUTES,
 		COURT_GRID_COLUMN,
 		FULL_COURT_GRID_COLUMN,
-		minutesToGridRow
+		minutesToGridRow,
+		snapToGridStep
 	} from '$lib/calendar';
 	import { fullCourtId, halfCourtAId, halfCourtBId } from '$lib/ids';
 	import type { Booking } from '$lib/types';
@@ -24,7 +25,8 @@
 	function getMinutes(entry: Booking) {
 		const start = formattedTimeToMinutes(entry.startTimeFormatted);
 		const end = formattedTimeToMinutes(entry.endTimeFormatted);
-		return { start, end, visible: clampToCalendar(start, end, { clampEnd: false }) };
+		const visible = clampToCalendar(start, end, { clampEnd: false });
+		return { start, end, visible: visible && snapToGridStep(visible) };
 	}
 </script>
 
@@ -45,7 +47,7 @@
 					<h3 class="booking-entry--name">{entry.bookedBy}</h3>
 				{/if}
 
-				<!-- Real times, even when the block is clamped to the visible hours -->
+				<!-- Real times, even when the block is clamped or snapped to the grid -->
 				<div class="booking-entry--time">
 					{print24HourTime(minutes.start)} - {print24HourTime(minutes.end)}
 				</div>
