@@ -9,8 +9,7 @@ import { createLogger } from '../logger';
 
 const logger = createLogger('scrapeBlazor:step2SearchForField');
 
-/** Searches for the field's resources and selects them. Returns how many were selected. */
-export async function searchForField(page: Page, config: FieldScrapeConfig): Promise<number> {
+export async function searchForField(page: Page, config: FieldScrapeConfig): Promise<void> {
 	return searchAndClickLabels(page, config);
 }
 
@@ -18,7 +17,7 @@ async function searchAndClickLabels(
 	page: Page,
 	config: FieldScrapeConfig,
 	retryCount = 0
-): Promise<number> {
+): Promise<void> {
 	logger.debug('Searching for field and selecting labels...', {
 		searchTerm: config.searchTerm,
 		retryCount
@@ -81,51 +80,30 @@ async function searchAndClickLabels(
 		}
 	}
 
-	const selectedCount = fieldLabels.length;
 	fieldLabels.forEach((label) => label.dispose());
-	return selectedCount;
 }
 
-const LABEL_SETTLE_MS = 300;
-const LABEL_SETTLE_MAX_CHECKS = 5;
-
 /**
- * Waits until the search result list only contains this field's labels.
- * With a known `labelCount` it waits for exactly that many; otherwise it
- * waits for at least one and then for the list to stop changing.
+ * Waits until the search has returned all its results and exactly
+ * `labelCount` of them belong to this field. The total is checked too so we
+ * don't click while Blazor is still rendering the list.
  */
 async function waitForFieldLabels(page: Page, config: FieldScrapeConfig): Promise<void> {
 	// Use page.waitForFunction to poll inside the browser instead of round-tripping
 	// through CDP on every poll iteration.
 	await page.waitForFunction(
-		(labelSelector: string, expectedText: string, expectedCount: number | null) => {
+		(labelSelector: string, expectedText: string, labelCount: number, resultCount: number) => {
 			const labels = Array.from(document.querySelectorAll(labelSelector));
-			if (labels.length === 0) return false;
-			if (expectedCount !== null && labels.length !== expectedCount) return false;
-			return labels.every((el) => el.textContent?.includes(expectedText));
+			if (labels.length !== resultCount) return false;
+			const matching = labels.filter((el) => el.textContent?.includes(expectedText));
+			return matching.length === labelCount;
 		},
 		{ timeout: 2000 },
 		selectors.resourceLabel,
 		config.labelText,
-		config.labelCount ?? null
+		config.labelCount,
+		config.searchResultCount ?? config.labelCount
 	);
-
-	if (config.labelCount !== undefined) return;
-
-	const countLabels = () =>
-		page.$$eval(selectors.resourceLabel, (labels) => labels.length).catch(() => -1);
-
-	let count = await countLabels();
-	for (let check = 0; check < LABEL_SETTLE_MAX_CHECKS; check++) {
-		await new Promise((resolve) => setTimeout(resolve, LABEL_SETTLE_MS));
-		const next = await countLabels();
-		if (next === count) {
-			logger.debug('Field labels settled', { count });
-			return;
-		}
-		count = next;
-	}
-	throw new Error('Field labels never settled');
 }
 
 /**

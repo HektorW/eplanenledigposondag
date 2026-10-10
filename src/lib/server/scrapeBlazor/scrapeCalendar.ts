@@ -116,8 +116,9 @@ async function doScrape(fieldId: FieldId, targetDate: Temporal.PlainDate): Promi
 			await page.goto(`${baseUrl}`, { waitUntil: 'domcontentloaded' });
 
 			await waitUntilPageIsLoaded(page);
-			const selectedCount = await searchForField(page, config);
-			await selectDayView(page, config.dayViewColumnCount ?? selectedCount);
+			await searchForField(page, config);
+			// Day view shows one column per selected resource
+			await selectDayView(page, config.labelCount);
 			await selectTargetDate(page, targetDate);
 
 			return scrapeAllBookings(page);
