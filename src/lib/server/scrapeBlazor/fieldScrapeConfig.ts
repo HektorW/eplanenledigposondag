@@ -17,18 +17,26 @@ export type FieldScrapeConfig = {
 	dayViewColumnCount?: number;
 };
 
-// TODO: booking parsing (resourceAndDateRegex + getResourceIdFromIndex) is
-// still Sorgenfri-specific. Move it in here once the other fields' labels are known.
+// Every field so far has the same layout — an 11-manna pitch plus "7-manna 1"
+// and "7-manna 2" halves — so booking parsing (resourceAndDateRegex +
+// getResourceIdFromIndex) is shared. A field with a different layout needs
+// its own parsing here.
+const fullPitchWithTwoHalves = { labelCount: 3, dayViewColumnCount: 3 } as const;
+
 export const FIELD_SCRAPE_CONFIG: Record<FieldId, FieldScrapeConfig> = {
 	sorgenfri: {
 		searchTerm: 'sor man',
 		labelText: 'Sorgenfri IP',
-		labelCount: 3,
-		dayViewColumnCount: 3
+		...fullPitchWithTwoHalves
 	},
-	// Label count not verified against the live site yet — let the search decide.
 	mellanheden: {
 		searchTerm: 'mell man',
-		labelText: 'Mellanhedens IP'
+		labelText: 'Mellanhedens IP',
+		...fullPitchWithTwoHalves
+	},
+	dalhem: {
+		searchTerm: 'dalh ko',
+		labelText: 'Dalhems IP',
+		...fullPitchWithTwoHalves
 	}
 };

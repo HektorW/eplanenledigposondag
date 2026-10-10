@@ -8,7 +8,8 @@ export type WeatherLocation = { lat: number; lon: number };
 
 export const FIELD_LIST = [
 	{ id: 'sorgenfri', name: 'Sorgenfri', weatherLocation: { lat: 55.59, lon: 13.02 } },
-	{ id: 'mellanheden', name: 'Mellanheden', weatherLocation: { lat: 55.5909, lon: 12.9688 } }
+	{ id: 'mellanheden', name: 'Mellanheden', weatherLocation: { lat: 55.5909, lon: 12.9688 } },
+	{ id: 'dalhem', name: 'Dalhem', weatherLocation: { lat: 55.6127, lon: 13.0386 } }
 ] as const satisfies readonly {
 	id: string;
 	name: string;
