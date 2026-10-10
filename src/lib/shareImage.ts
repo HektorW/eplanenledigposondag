@@ -5,7 +5,9 @@ import {
 	CALENDAR_ROWS,
 	CALENDAR_ROWS_PER_HOUR,
 	CALENDAR_START_HOUR,
+	CALENDAR_STEP_MINUTES,
 	clampToCalendar,
+	COMPACT_BOOKING_MAX_MINUTES,
 	COURT_ID_LIST,
 	COURT_LABEL,
 	COURT_RESOURCE_ID,
@@ -155,17 +157,16 @@ export async function generateShareImage(params: {
 		ctx.fill();
 
 		ctx.fillStyle = colors.bookingText;
-		if (booking.bookedBy) {
-			ctx.font = `600 13px ${FONT}`;
-			ctx.fillText(booking.bookedBy, x + 8, by + 17, w - 16);
-		}
-		ctx.font = `400 12px ${FONT}`;
-		ctx.fillText(
-			`${print24HourTime(start)} – ${print24HourTime(end)}`,
-			x + 8,
-			by + (booking.bookedBy ? 32 : 17),
-			w - 16
-		);
+		drawBookingText(ctx, {
+			x: x + 8,
+			y: by,
+			maxWidth: w - 16,
+			height: bh,
+			name: booking.bookedBy,
+			// Real times, even when the block is clamped
+			timeText: `${print24HourTime(start)} – ${print24HourTime(end)}`,
+			durationMinutes: visible.end - visible.start
+		});
 	}
 
 	// Draw suggestion
@@ -206,6 +207,48 @@ export async function generateShareImage(params: {
 			'image/png'
 		);
 	});
+}
+
+/**
+ * Mirrors the page's layouts (see Bookings.svelte): two lines normally, a
+ * tighter pair under COMPACT_BOOKING_MAX_MINUTES, and name + time sharing one
+ * line when the block is a single grid step. Without this a clamped sliver
+ * (e.g. a school booking ending 9:30) spills its text over the rows below.
+ */
+function drawBookingText(
+	ctx: CanvasRenderingContext2D,
+	params: {
+		x: number;
+		y: number;
+		maxWidth: number;
+		height: number;
+		name: string;
+		timeText: string;
+		durationMinutes: number;
+	}
+) {
+	const { x, y, maxWidth, height, name, timeText, durationMinutes } = params;
+
+	if (durationMinutes <= CALENDAR_STEP_MINUTES) {
+		ctx.font = `600 10px ${FONT}`;
+		ctx.fillText(name ? `${name} ${timeText}` : timeText, x, y + height / 2 + 3.5, maxWidth);
+		return;
+	}
+
+	const compact = durationMinutes < COMPACT_BOOKING_MAX_MINUTES;
+	const nameFont = compact ? `600 11px ${FONT}` : `600 13px ${FONT}`;
+	const timeFont = compact ? `400 10px ${FONT}` : `400 12px ${FONT}`;
+	const firstBaseline = compact ? 12 : 17;
+	const lineHeight = compact ? 12 : 15;
+
+	let baseline = y + firstBaseline;
+	if (name) {
+		ctx.font = nameFont;
+		ctx.fillText(name, x, baseline, maxWidth);
+		baseline += lineHeight;
+	}
+	ctx.font = timeFont;
+	ctx.fillText(timeText, x, baseline, maxWidth);
 }
 
 function roundRect(
