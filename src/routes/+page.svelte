@@ -198,7 +198,7 @@
 						)}</pre></code
 				>
 			{/if}
-			<p>
+			<p class="error-contact">
 				Skriv till Hektor eller ännu bättre lägg en PR <a
 					href="https://github.com/HektorW/eplanenledigposondag"
 					target="_blank">https://github.com/HektorW/eplanenledigposondag</a
@@ -215,6 +215,9 @@
 <style>
 	main {
 		display: grid;
+		/* minmax(0, …) so wide children (e.g. the scrolling field chips) can't
+		   stretch the column past the viewport */
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: auto auto 1fr;
 		margin-inline: auto;
 		max-width: 50em;
@@ -239,6 +242,10 @@
 			height: 1em;
 			width: 1em;
 		}
+	}
+
+	.error-contact {
+		overflow-wrap: anywhere;
 	}
 
 	.hint {
