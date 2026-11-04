@@ -37,6 +37,7 @@ async function trySearchAndClickLabels(page: Page, config: FieldScrapeConfig): P
 	const labelsReady = await attempt(() => waitForFieldLabels(page, config));
 	if (isFail(labelsReady)) {
 		logger.debug('Error while waiting for labels:', labelsReady.error);
+		await logSearchState(page, config);
 		return false;
 	}
 
@@ -79,6 +80,45 @@ async function trySearchAndClickLabels(page: Page, config: FieldScrapeConfig): P
 
 	fieldLabels.forEach((label) => label.dispose());
 	return true;
+}
+
+/**
+ * Logs what the page actually shows when the expected labels don't appear,
+ * so a site-side change (renamed resources, new markup) is visible in the
+ * production logs instead of just a timeout.
+ */
+async function logSearchState(page: Page, config: FieldScrapeConfig): Promise<void> {
+	const state = await attempt(() =>
+		page.evaluate(
+			(searchSelector: string, labelSelector: string) => ({
+				url: location.href,
+				searchInputFound: document.querySelector(searchSelector) !== null,
+				searchValue:
+					(document.querySelector(searchSelector) as HTMLInputElement | null)?.value ?? null,
+				labelTexts: Array.from(document.querySelectorAll(labelSelector)).map((el) =>
+					el.textContent?.trim()
+				),
+				resurserFound: document.querySelector('#Resurser') !== null,
+				anyLabelTexts: Array.from(document.querySelectorAll('label'))
+					.map((el) => el.textContent?.trim())
+					.filter(Boolean)
+					.slice(0, 30)
+			}),
+			selectors.searchInput,
+			selectors.resourceLabel
+		)
+	);
+
+	if (isFail(state)) {
+		logger.warn('Could not read search state', state.error);
+		return;
+	}
+
+	logger.warn('Field labels did not appear as expected', {
+		expectedLabelText: config.labelText,
+		expectedLabelCount: config.labelCount,
+		...state
+	});
 }
 
 const LABEL_LIST_POLL_MS = 50;
