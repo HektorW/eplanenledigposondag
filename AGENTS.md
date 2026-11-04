@@ -30,4 +30,4 @@ Run `pnpm test:unit` when touching `src/lib/**` logic. Skip `pnpm test:scraping`
 
 ## Package manager
 
-pnpm 10 only. Node >=24. Do not use npm or yarn.
+pnpm 10 only. Node 24 (`engines` is pinned to `24.x` — `>=24` made Vercel build on Node 26, which `@sveltejs/adapter-vercel` rejects). Do not use npm or yarn.
