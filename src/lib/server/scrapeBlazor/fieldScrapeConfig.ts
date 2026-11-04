@@ -5,6 +5,8 @@ export type FieldScrapeConfig = {
 	 * Typed into the resource search. The search ANDs whitespace-separated
 	 * substrings; there is no phrase or exclusion syntax. It may hit other
 	 * fields' resources too — `labelText` picks ours out of the results.
+	 * Match on "kon" (Konstgräs), not "manna": the half-pitch suffix varies
+	 * between "7-manna" and "7-spels" across fields.
 	 */
 	searchTerm: string;
 	/**
@@ -16,25 +18,25 @@ export type FieldScrapeConfig = {
 	labelCount: number;
 };
 
-// Every field so far has the same layout — an 11-manna pitch plus "7-manna 1"
-// and "7-manna 2" halves — so booking parsing (resourceAndDateRegex +
+// Every field so far has the same layout — an 11-spels pitch plus "7-spels 1"
+// and "7-spels 2" halves (some fields still say "7-manna") — so booking parsing (resourceAndDateRegex +
 // getResourceIdFromIndex) is shared. A field with a different layout needs
 // its own parsing here.
 const fullPitchWithTwoHalves = { labelCount: 3 } as const;
 
 export const FIELD_SCRAPE_CONFIG: Record<FieldId, FieldScrapeConfig> = {
 	sorgenfri: {
-		searchTerm: 'sor man',
+		searchTerm: 'sor kon',
 		labelText: 'Sorgenfri IP',
 		...fullPitchWithTwoHalves
 	},
 	mellanheden: {
-		searchTerm: 'mell man',
+		searchTerm: 'mell kon',
 		labelText: 'Mellanhedens IP',
 		...fullPitchWithTwoHalves
 	},
 	dalhem: {
-		searchTerm: 'dalh ko',
+		searchTerm: 'dalh kon',
 		labelText: 'Dalhems IP',
 		...fullPitchWithTwoHalves
 	},

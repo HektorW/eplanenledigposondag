@@ -8,4 +8,6 @@ export const selectors = {
 	resourceLabel: '#Resurser label'
 } as const;
 
-export const resourceAndDateRegex = /(?:7-manna (\d))?, Starts at ([^,]+), Ends at (.+)$/;
+// Half-pitch suffix is "7-manna N" on some fields and "7-spels N" on others
+// (malmo.rbok.se renamed most of them in Nov 2026). No suffix = full pitch.
+export const resourceAndDateRegex = /(?:7-(?:manna|spels) (\d))?, Starts at ([^,]+), Ends at (.+)$/;
